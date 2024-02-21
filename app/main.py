@@ -66,7 +66,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 def request_model(sentence, model):
     r = requests.post(f"{MODEL_ENDPOINTS[model]}/transform-sentence-to-imr",
-                      headers={'accept': 'application/json', 'Content-Type': 'application/json'},
+                      headers={'accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'},
                       data=json.dumps({"sentence": sentence}))
     return r.json()
 
