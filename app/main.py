@@ -43,7 +43,6 @@ class Response(BaseModel):
     error: Optional[str]
     prompt: Optional[str]
 
-
 class HTTPErrorResponse(BaseModel):
     message: str
     status: str
@@ -56,10 +55,10 @@ class RequestBody(BaseModel):
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
-    response_model = HTTPErrorResponse(status="error", message=exc.detail)
+    response_model = HTTPErrorResponse(status="error", message=str(exc.detail))
     json_compatible_item_data = jsonable_encoder(response_model)
     return JSONResponse(
-        status_code=exc.status_code,
+        status_code=400,
         content=json_compatible_item_data,
     )
 
@@ -68,7 +67,7 @@ def request_model(sentence, model):
     r = requests.post(f"{MODEL_ENDPOINTS[model]}/transform-sentence-to-imr",
                       headers={'accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'},
                       data=json.dumps({"sentence": sentence}))
-    return r.json()
+    return r
 
 
 @app.post(
@@ -79,7 +78,16 @@ def request_model(sentence, model):
 def transform_sentence_to_imr(body: RequestBody):
     sentence = body.sentence
     model = body.model
-    model_result = request_model(sentence, model)
-    # save to mongodb
-    collection.insert_one(model_result)
+    response = request_model(sentence, model)
+
+    if response.status_code == status.HTTP_200_OK:
+        model_result = response.json()
+
+    elif response.status_code == status.HTTP_400_BAD_REQUEST:
+        model_result = response.json()
+        collection.insert_one(model_result)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=model_result
+        )
+
     return model_result
