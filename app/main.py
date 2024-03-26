@@ -82,6 +82,7 @@ def transform_sentence_to_imr(body: RequestBody):
 
     if response.status_code == status.HTTP_200_OK:
         model_result = response.json()
+        collection.insert_one(model_result)
 
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
         model_result = response.json()
