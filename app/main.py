@@ -87,7 +87,11 @@ def transform_sentence_to_imr(body: RequestBody):
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
         error_response = response.json()
         error_message = error_response.get('message', '')
-        error_details = json.loads(error_message)
+        
+        cleaned_message = error_message.replace('\'', '\"').replace('None', 'null')
+        cleaned_message = cleaned_message.replace('\\n', '\\\\n')
+        
+        error_details = json.loads(cleaned_message)
         
         collection.insert_one({
             "timestamp": error_details.get('timestamp'),
