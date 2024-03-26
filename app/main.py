@@ -85,10 +85,27 @@ def transform_sentence_to_imr(body: RequestBody):
         collection.insert_one(model_result)
 
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
-        model_result = response.json()
-        collection.insert_one(model_result)
+        error_response = response.json()
+        error_message = error_response.get('message', '')
+        error_details = json.loads(error_message)
+        
+        collection.insert_one({
+            "timestamp": error_details.get('timestamp'),
+            "inputSentence": error_details.get('inputSentence'),
+            "imr": error_details.get('imr'),
+            "rawOutput": error_details.get('rawOutput'),
+            "status": "error",
+            "error": error_details.get('error'),
+            "modelVersion": error_details.get('modelVersion'),
+            "prompt": error_details.get('prompt'),
+        })
+        
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=model_result
+            status_code=status.HTTP_400_BAD_REQUEST, detail=error_response
+        )
+    else:
+        raise HTTPException(
+            status_code=response.status_code, detail="An unexpected error occurred."
         )
 
     return model_result
