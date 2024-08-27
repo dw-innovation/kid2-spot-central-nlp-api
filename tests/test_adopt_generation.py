@@ -1,6 +1,6 @@
 import unittest
 
-from app.adopt_generation import build_filters
+from app.adopt_generation import build_filters, adopt_generation
 
 '''
 Execute python -m unittest tests.test_adopt_generation
@@ -41,5 +41,12 @@ class TestAdoptFunction(unittest.TestCase):
                                    {'key': 'brand', 'operator': '~', 'value': 'h&m'}]}]
         self.assertEqual(result, expected_output)
 
-    if __name__ == '__main__':
-        unittest.main()
+
+    def test_adopt_pipeline(self):
+        parsed_result = {'area': {'type': 'bbox'}, 'entities': [{'id': 0, 'name': 'supermarket', 'properties': [{'name': 'height', 'operator': '>', 'value': 10}, {'name': 'roof material', 'operator': '=', 'value': 'red'}], 'type': 'nwr'}]}
+        result = adopt_generation(parsed_result)
+        expected_output = {'area': {'type': 'bbox'}, 'nodes': [{'id': 0, 'type': 'nwr', 'filters': [{'and': [{'or': [{'key': 'shop', 'operator': '=', 'value': 'supermarket'}, {'key': 'building', 'operator': '=', 'value': 'supermarket'}, {'key': 'shop', 'operator': '=', 'value': 'discounter'}, {'key': 'shop', 'operator': '=', 'value': 'wholesale'}]}, {'key': 'height', 'operator': '>', 'value': 10}, {'key': 'roof:material', 'operator': '=', 'value': 'red'}]}], 'name': 'supermarket', 'display_name': 'supermarkets'}]}
+        self.assertEqual(result, expected_output)
+
+if __name__ == '__main__':
+    unittest.main()

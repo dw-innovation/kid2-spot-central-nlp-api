@@ -88,7 +88,7 @@ def build_filters(node):
             ent_property_imr = search_osm_tag(ent_property)
             ent_property_imr = ent_property_imr[0]['imr'][0]['or']
 
-            if 'operator' in ent_property_imr:
+            if 'operator' in node_flt:
                 new_ent_operator = node_flt['operator']
                 if len(new_ent_operator) == 0:
                     new_ent_operator = '='
