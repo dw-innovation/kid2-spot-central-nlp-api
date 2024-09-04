@@ -74,9 +74,10 @@ def transform_sentence_to_imr(body: RequestBody):
     model = body.model
 
     response = MODEL_INFERENCES[model].generate(sentence)
-    raw_output = MODEL_INFERENCES[model].get_raw_output(response)
+
 
     if response.status_code == status.HTTP_200_OK:
+        raw_output = MODEL_INFERENCES[model].get_raw_output(response)
         adopted_result = MODEL_INFERENCES[model].adopt(raw_output)
 
         print("==adopted result==")
