@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pymongo import MongoClient
-
+from datetime import datetime
 from llama_inference import LlamaInference
 from t5_inference import T5Inference
 
@@ -80,10 +80,8 @@ def transform_sentence_to_imr(body: RequestBody):
         raw_output = MODEL_INFERENCES[model].get_raw_output(response)
         adopted_result = MODEL_INFERENCES[model].adopt(raw_output)
 
-        print("==adopted result==")
-        print(adopted_result)
-
         model_result = {
+            'timestamp': datetime.now(),
             'inputSentence': sentence,
             'imr': adopted_result,
             'rawOutput': raw_output,
