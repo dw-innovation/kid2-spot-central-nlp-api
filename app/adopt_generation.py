@@ -12,6 +12,7 @@ sys.path.append(PROJECT_PATH)
 
 cache = Cache("tmp")
 SEARCH_ENDPOINT = os.getenv("SEARCH_ENDPOINT")
+COLOR_BUNDLE_SEARCH = os.getenv("COLOR_BUNDLE_SEARCH")
 PLURAL_ENGINE = inflect.engine()
 DEFAULT_DISTANCE = os.getenv("DEFAULT_DISTANCE")
 
@@ -46,6 +47,13 @@ def search_osm_tag(entity):
     PARAMS = {"word": entity, "limit": 1, "detail": False}
     r = requests.get(
         url=SEARCH_ENDPOINT, params=PARAMS, verify=False
+    )  # set verify to False to ignore SSL certificate
+    return r.json()
+
+def fetch_color_bundles(color:str):
+    PARAMS = {"color": color, "limit": 1, "detail": False}
+    r = requests.get(
+        url=COLOR_BUNDLE_SEARCH, params=PARAMS, verify=False
     )  # set verify to False to ignore SSL certificate
     return r.json()
 
@@ -86,6 +94,7 @@ def build_filters(node):
         for node_flt in node["properties"]:
             ent_property = node_flt["name"]
             ent_property_imr = search_osm_tag(ent_property)
+
             ent_property_imr = ent_property_imr[0]['imr'][0]['or']
 
             if 'operator' in node_flt:
@@ -98,12 +107,23 @@ def build_filters(node):
                     ent_property_imr = ent_property_imr[0]
                     ent_property_imr["operator"] = new_ent_operator
                     ent_property_imr["value"] = new_ent_value
-                elif any(_ent_prop['key'] in ['brand', 'name'] for _ent_prop in ent_property_imr):
+                elif any(_ent_prop['key'] in ['brand', 'name', 'colour'] for _ent_prop in ent_property_imr):
                     new_ent_property_imr = []
-                    for item in ent_property_imr:
-                        item['operator'] = new_ent_operator
-                        item['value'] = new_ent_value
-                        new_ent_property_imr.append(item)
+
+                    if 'colour' in ent_property_imr[0]['key']:
+                        color_values = fetch_color_bundles(new_ent_value)['color_values']
+                        for color_value in color_values:
+                            for item in ent_property_imr:
+                                new_item = item.copy()
+                                new_item['operator'] = new_ent_operator
+                                new_item['value'] = color_value
+                                print(f'resulted item {new_item}')
+                                new_ent_property_imr.append(new_item)
+                    else:
+                        for item in ent_property_imr:
+                            item['operator'] = new_ent_operator
+                            item['value'] = new_ent_value
+                            new_ent_property_imr.append(item)
 
                     new_ent_property_imr = {"or": new_ent_property_imr}
                     ent_property_imr = new_ent_property_imr
