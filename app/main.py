@@ -30,6 +30,7 @@ app.add_middleware(
 
 
 class Response(BaseModel):
+    timestamp: str
     imr: Dict
     inputSentence: str
     status: str
@@ -38,6 +39,7 @@ class Response(BaseModel):
     modelVersion: str
     error: Optional[str]
     prompt: Optional[str]
+
 
 class HTTPErrorResponse(BaseModel):
     message: str
@@ -58,6 +60,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content=json_compatible_item_data,
     )
 
+
 MODEL_INFERENCES = {
     'llama': LlamaInference(),
     't5': T5Inference()
@@ -75,18 +78,17 @@ def transform_sentence_to_imr(body: RequestBody):
 
     response = MODEL_INFERENCES[model].generate(sentence)
 
-
     if response.status_code == status.HTTP_200_OK:
         raw_output = MODEL_INFERENCES[model].get_raw_output(response)
         adopted_result = MODEL_INFERENCES[model].adopt(raw_output)
 
         model_result = {
-            'timestamp': datetime.now(),
-            'inputSentence': sentence,
-            'imr': adopted_result,
-            'rawOutput': raw_output,
-            'modelVersion': model,
-            'status': 'success'
+        'timestamp': f'{datetime.now():%Y-%m-%d %H:%M:%S%z}',
+        'inputSentence': sentence,
+        'imr': adopted_result,
+        'rawOutput': raw_output,
+        'modelVersion': model,
+        'status': 'success'
         }
 
         collection.insert_one(model_result)
@@ -94,10 +96,10 @@ def transform_sentence_to_imr(body: RequestBody):
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
         error_response = response.json()
         error_message = error_response.get('message', '')
-        
+
         cleaned_message = error_message.replace('\'', '\"').replace('None', 'null')
         cleaned_message = cleaned_message.replace('\\n', '\\\\n')
-        
+
         error_details = json.loads(cleaned_message)
         collection.insert_one({
             "timestamp": error_details.get('timestamp'),
@@ -109,7 +111,7 @@ def transform_sentence_to_imr(body: RequestBody):
             "modelVersion": error_details.get('modelVersion'),
             "prompt": error_details.get('prompt'),
         })
-        
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=error_response
         )
