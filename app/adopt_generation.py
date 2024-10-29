@@ -117,7 +117,6 @@ def build_filters(node):
                                 new_item = item.copy()
                                 new_item['operator'] = new_ent_operator
                                 new_item['value'] = color_value
-                                print(f'resulted item {new_item}')
                                 new_ent_property_imr.append(new_item)
                     else:
                         for item in ent_property_imr:
