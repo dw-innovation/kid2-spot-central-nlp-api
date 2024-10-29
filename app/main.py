@@ -1,8 +1,6 @@
 import json
 import os
 from typing import Dict, Optional
-
-import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
@@ -10,6 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pymongo import MongoClient
+from datetime import datetime
+from llama_inference import LlamaInference
+from t5_inference import T5Inference
 
 load_dotenv()
 
@@ -17,11 +18,6 @@ app = FastAPI()
 client = MongoClient(os.getenv("MONGO_URI"))
 db = client[os.getenv("MONGO_DB_NAME")]
 collection = db[os.getenv("MONGO_COLLECTION_NAME")]
-
-MODEL_ENDPOINTS = {
-    "chatgpt": os.getenv("CHATGPT_ENDPOINT"),
-    "t5": os.getenv("T5_ENDPOINT")
-}
 
 origins = ["*"]
 app.add_middleware(
@@ -34,6 +30,7 @@ app.add_middleware(
 
 
 class Response(BaseModel):
+    timestamp: str
     imr: Dict
     inputSentence: str
     status: str
@@ -42,6 +39,7 @@ class Response(BaseModel):
     modelVersion: str
     error: Optional[str]
     prompt: Optional[str]
+
 
 class HTTPErrorResponse(BaseModel):
     message: str
@@ -63,11 +61,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     )
 
 
-def request_model(sentence, model):
-    r = requests.post(f"{MODEL_ENDPOINTS[model]}/transform-sentence-to-imr",
-                      headers={'accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'},
-                      data=json.dumps({"sentence": sentence}))
-    return r
+MODEL_INFERENCES = {
+    'llama': LlamaInference(),
+    't5': T5Inference()
+}
 
 
 @app.post(
@@ -76,19 +73,51 @@ def request_model(sentence, model):
     status_code=status.HTTP_200_OK,
 )
 def transform_sentence_to_imr(body: RequestBody):
-    sentence = body.sentence
+    sentence = body.sentence.lower()
     model = body.model
-    response = request_model(sentence, model)
+
+    response = MODEL_INFERENCES[model].generate(sentence)
 
     if response.status_code == status.HTTP_200_OK:
-        model_result = response.json()
+        raw_output = MODEL_INFERENCES[model].get_raw_output(response)
+        adopted_result = MODEL_INFERENCES[model].adopt(raw_output)
+
+        model_result = {
+        'timestamp': f'{datetime.now():%Y-%m-%d %H:%M:%S%z}',
+        'inputSentence': sentence,
+        'imr': adopted_result,
+        'rawOutput': raw_output,
+        'modelVersion': model,
+        'status': 'success'
+        }
+
         collection.insert_one(model_result)
 
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
-        model_result = response.json()
-        collection.insert_one(model_result)
+        error_response = response.json()
+        error_message = error_response.get('message', '')
+
+        cleaned_message = error_message.replace('\'', '\"').replace('None', 'null')
+        cleaned_message = cleaned_message.replace('\\n', '\\\\n')
+
+        error_details = json.loads(cleaned_message)
+        collection.insert_one({
+            "timestamp": error_details.get('timestamp'),
+            "inputSentence": error_details.get('inputSentence'),
+            "imr": error_details.get('imr'),
+            "rawOutput": error_details.get('rawOutput'),
+            "status": "error",
+            "error": error_details.get('error'),
+            "modelVersion": error_details.get('modelVersion'),
+            "prompt": error_details.get('prompt'),
+        })
+
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=model_result
+            status_code=status.HTTP_400_BAD_REQUEST, detail=error_response
+        )
+    else:
+        raise HTTPException(
+            status_code=response.status_code, detail="An unexpected error occurred."
         )
 
     return model_result
