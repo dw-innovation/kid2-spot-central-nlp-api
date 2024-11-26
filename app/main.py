@@ -49,6 +49,7 @@ class HTTPErrorResponse(BaseModel):
 class RequestBody(BaseModel):
     sentence: str
     model: str
+    username: str
 
 
 @app.exception_handler(HTTPException)
@@ -75,6 +76,7 @@ MODEL_INFERENCES = {
 def transform_sentence_to_imr(body: RequestBody):
     sentence = body.sentence.lower()
     model = body.model
+    username = body.username
 
     response = MODEL_INFERENCES[model].generate(sentence)
 
@@ -88,7 +90,8 @@ def transform_sentence_to_imr(body: RequestBody):
         'imr': adopted_result,
         'rawOutput': raw_output,
         'modelVersion': model,
-        'status': 'success'
+        'status': 'success',
+        'username': username
         }
 
         collection.insert_one(model_result)
@@ -102,14 +105,15 @@ def transform_sentence_to_imr(body: RequestBody):
 
         error_details = json.loads(cleaned_message)
         collection.insert_one({
-            "timestamp": error_details.get('timestamp'),
-            "inputSentence": error_details.get('inputSentence'),
-            "imr": error_details.get('imr'),
-            "rawOutput": error_details.get('rawOutput'),
-            "status": "error",
-            "error": error_details.get('error'),
-            "modelVersion": error_details.get('modelVersion'),
-            "prompt": error_details.get('prompt'),
+            'timestamp': error_details.get('timestamp'),
+            'inputSentence': error_details.get('inputSentence'),
+            'imr': error_details.get('imr'),
+            'rawOutput': error_details.get('rawOutput'),
+            'status': "error",
+            'error': error_details.get('error'),
+            'modelVersion': error_details.get('modelVersion'),
+            'prompt': error_details.get('prompt'),
+            'username': username
         })
 
         raise HTTPException(
