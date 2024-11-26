@@ -4,8 +4,8 @@ from main import app
 
 client = TestClient(app)
 
-# model = 'llama'
-model = 't5'
+model = 'llama'
+# model = 't5'
 
 test_sentences = [
         "Find all italian restaurants that are no more than 200 meters from a fountain in London.",
