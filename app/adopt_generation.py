@@ -3,14 +3,13 @@ import os
 import requests
 import sys
 from collections.abc import Iterable
-from diskcache import Cache
 from dotenv import load_dotenv
+from functools import lru_cache
 
 load_dotenv()
 PROJECT_PATH = os.getcwd()
 sys.path.append(PROJECT_PATH)
 
-cache = Cache("tmp")
 SEARCH_ENDPOINT = os.getenv("SEARCH_ENDPOINT")
 COLOR_BUNDLE_SEARCH = os.getenv("COLOR_BUNDLE_SEARCH")
 PLURAL_ENGINE = inflect.engine()
@@ -42,7 +41,7 @@ class AdoptFuncError(Exception):
         super().__init__(self.message)
 
 
-# @cache.memoize()
+@lru_cache(maxsize=None)
 def search_osm_tag(entity):
     PARAMS = {"word": entity, "limit": 1, "detail": False}
     r = requests.get(
@@ -67,14 +66,13 @@ def build_filters(node):
 
     if node_name.startswith('brand:'):
         brand_name = node_name.replace('brand:', '')
+
+        for item in ent_filters:
+            for sub_item in item['or']:
+                if sub_item['value'] == '***example***':
+                    sub_item['value'] = brand_name
         ent_filters = [
-            {
-                'or': [
-                    {**sub_item, 'value': brand_name if sub_item['value'] == '***example***' else sub_item['value']}
-                    for sub_item in item['or']
-                ]
-            }
-            for item in ent_filters
+            {'or': item['or']} for item in ent_filters
         ]
 
     additional_att_tag = None

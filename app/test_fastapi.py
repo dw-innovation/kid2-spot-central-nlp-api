@@ -19,13 +19,15 @@ test_sentences = [
         "find mural, 300 yards form burger king restaurant with pakring spotts in laborde, cordoba, argentina",
         "i am looking for an italian restaurant with outdoor seating, the restaurant is within 300 meters from train tracks and a railway bridge.",
         "I am looking for locations. I searching for an communications tower who is located within construction site. The aforementioned tower are locate in close distances to H&M.",
-        "i look for a restaurant in makkah, saudi arabia. i would like the restaurant to be either Nusret or Kebap"
+        "i look for a restaurant in makkah, saudi arabia. i would like the restaurant to be either Nusret or Kebap",
+        "i look for Aldi close to Burger King in Koblenz."
     ]
 
 for test_sentence in test_sentences:
     response = client.post("/transform-sentence-to-imr", headers={"X-Token": "coneofsilence"},
                            json={"sentence": test_sentence,
-                                 "model": model})
+                                 "model": model,
+                                 "username": "kid-ipek"})
 
     print("==sentence==")
     print(test_sentence)
