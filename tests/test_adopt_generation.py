@@ -42,6 +42,7 @@ class TestAdoptFunction(unittest.TestCase):
                                    {'key': 'short_name', 'operator': '~', 'value': 'h&m'},
                                    {'key': 'name:en', 'operator': '~', 'value': 'h&m'},
                                    {'key': 'int_name', 'operator': '~', 'value': 'h&m'},
+                                   {'key': 'official_name', 'operator': '~', 'value': 'h&m'},
                                    ]}]
         self.assertEqual(result, expected_output)
 
@@ -95,6 +96,12 @@ class TestAdoptFunction(unittest.TestCase):
             }
         ]
 
+        self.assertEqual(result, expected_output)
+
+    def test_cuisine(self):
+        node = {'id': 0, 'name': 'restaurant', 'properties': [{'name': 'cuisine', 'operator': '=', 'value': 'italian'}], 'type': 'nwr'}
+        result = build_filters(node)
+        expected_output = [{'and': [{'or': [{'key': 'amenity', 'operator': '=', 'value': 'restaurant'}, {'key': 'amenity', 'operator': '=', 'value': 'food_court'}, {'key': 'amenity', 'operator': '=', 'value': 'fast_food'}]}, {'key': 'cuisine', 'operator': '=', 'value': 'italian'}]}]
         self.assertEqual(result, expected_output)
 
 if __name__ == '__main__':

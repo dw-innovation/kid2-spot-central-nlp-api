@@ -75,19 +75,10 @@ def build_filters(node):
             {'or': item['or']} for item in ent_filters
         ]
 
-    additional_att_tag = None
-
-    processed_filters = []
-    if len(ent_filters) > 0:
-        if is_nested_list(ent_filters):
-            processed_filters.extend(ent_filters[0])
-        else:
-            processed_filters.extend(ent_filters)
+    processed_filters = ent_filters[0] if ent_filters and is_nested_list(ent_filters) else ent_filters
 
     if "properties" in node:
-        node_flts = []
-
-        node_flts.append(processed_filters[0])
+        node_flts = [processed_filters[0]]
 
         for node_flt in node["properties"]:
             ent_property = node_flt["name"]
@@ -106,24 +97,14 @@ def build_filters(node):
                     ent_property_imr["operator"] = new_ent_operator
                     ent_property_imr["value"] = new_ent_value
                 elif any(_ent_prop['key'] in ['brand', 'name', 'colour'] for _ent_prop in ent_property_imr):
-                    new_ent_property_imr = []
-
-                    if 'colour' in ent_property_imr[0]['key']:
-                        color_values = fetch_color_bundles(new_ent_value)['color_values']
-                        for color_value in color_values:
-                            for item in ent_property_imr:
-                                new_item = item.copy()
-                                new_item['operator'] = new_ent_operator
-                                new_item['value'] = color_value
-                                new_ent_property_imr.append(new_item)
+                    if ent_property_imr and 'colour' in ent_property_imr[0].get('key', ''):
+                        new_ent_property_imr = handle_color_filter(ent_property_imr, new_ent_operator, new_ent_value)
                     else:
-                        for item in ent_property_imr:
-                            item['operator'] = new_ent_operator
-                            item['value'] = new_ent_value
-                            new_ent_property_imr.append(item)
+                        new_ent_property_imr = [
+                            {**item, 'operator': new_ent_operator, 'value': new_ent_value} for item in ent_property_imr
+                        ]
 
-                    new_ent_property_imr = {"or": new_ent_property_imr}
-                    ent_property_imr = new_ent_property_imr
+                    ent_property_imr = {"or": new_ent_property_imr}
             else:
                 if isinstance(ent_property_imr, list):
                     new_ent_property_imr = {"or": ent_property_imr}
@@ -133,45 +114,49 @@ def build_filters(node):
 
         processed_filters = [{"and": node_flts}]
 
-    if additional_att_tag:
-        processed_filters = [{"and": [processed_filters[0], additional_att_tag]}]
-
-    and_or_in_filters = False
-    for processed_filter in processed_filters:
-        if "and" in processed_filter:
-            and_or_in_filters = True
-            continue
-        if "or" in processed_filter:
-            and_or_in_filters = True
-            continue
-
-    if not and_or_in_filters:
+    if not any(key in processed_filters[0] for key in ["and", "or"]):
         processed_filters = [{"and": processed_filters}]
 
     return processed_filters
 
 
+def handle_color_filter(ent_property_imr, new_ent_operator, new_ent_value):
+    color_values = fetch_color_bundles(new_ent_value)['color_values']
+    new_ent_property_imr = []
+
+    for color_value in color_values:
+        for item in ent_property_imr:
+            new_item = item.copy()
+            new_item['operator'] = new_ent_operator
+            new_item['value'] = color_value
+            new_ent_property_imr.append(new_item)
+
+    return new_ent_property_imr
+
+
 def adopt_generation(parsed_result):
     try:
-        area = parsed_result['area']
+        area = parsed_result.get('area', {})
         if area['type'] == 'bbox':
-            if 'value' in area:
-                del area['value']
+            if area.get('type') == 'bbox':
+                area.pop('value', None)
 
-        parsed_result['nodes'] = parsed_result.pop('entities')
+        parsed_result['nodes'] = parsed_result.pop('entities', [])
 
         processed_nodes = []
         for node in parsed_result['nodes']:
-            if 'name' not in node:
+            name = node.get('name')
+            if not name:
                 print(f'{node} has not the required name field!')
                 continue
-            if not PLURAL_ENGINE.singular_noun(node['name']):
-                display_name = PLURAL_ENGINE.plural_noun(node["name"])
-            else:
-                display_name = node['name']
 
-            if display_name.startswith('brand:'):
-                display_name = display_name.replace('brand:', '')
+            display_name = (
+                PLURAL_ENGINE.plural_noun(name)
+                if not PLURAL_ENGINE.singular_noun(name)
+                else name
+            )
+
+            display_name = display_name.replace('brand:', '') if display_name.startswith('brand:') else display_name
 
             node_filters = build_filters(node)
 
@@ -190,6 +175,7 @@ def adopt_generation(parsed_result):
         if 'relations' in parsed_result:
             parsed_result['edges'] = parsed_result.pop('relations')
 
-    except (ValueError, IndexError, KeyError, TypeError) as e:
+    except (KeyError, TypeError) as e:
         raise AdoptFuncError(f"Error in Adopt Generation: {e}")
+
     return parsed_result
