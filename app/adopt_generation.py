@@ -15,8 +15,6 @@ COLOR_BUNDLE_SEARCH = os.getenv("COLOR_BUNDLE_SEARCH")
 PLURAL_ENGINE = inflect.engine()
 DEFAULT_DISTANCE = os.getenv("DEFAULT_DISTANCE")
 
-load_dotenv()
-
 def flatten(xs):
     for x in xs:
         if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
