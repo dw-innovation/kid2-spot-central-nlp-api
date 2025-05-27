@@ -181,7 +181,7 @@ def adopt_generation(parsed_result):
                 if 'minpoints' in node:
                     processed_nodes.append({
                         'id': node['id'],
-                        'type': 'nwr',
+                        'type': 'cluster',
                         'maxDistance': node['maxdistance'],
                         'minPoints': node['minpoints'],
                         'filters': node_filters,
