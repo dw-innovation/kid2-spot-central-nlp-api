@@ -178,7 +178,7 @@ def adopt_generation(parsed_result):
             node_filters = build_filters(node)
 
             if node_filters:
-                if 'maxdistance' in node:
+                if 'minpoints' in node:
                     processed_nodes.append({
                         'id': node['id'],
                         'type': 'nwr',
