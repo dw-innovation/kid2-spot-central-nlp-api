@@ -178,14 +178,26 @@ def adopt_generation(parsed_result):
             node_filters = build_filters(node)
 
             if node_filters:
-                processed_nodes.append({
-                    'id': node['id'],
-                    'type': 'nwr',
-                    'filters': node_filters,
-                    'name': node['name'],
-                    'display_name': display_name
+                if 'maxdistance' in node:
+                    processed_nodes.append({
+                        'id': node['id'],
+                        'type': 'nwr',
+                        'maxDistance': node['maxdistance'],
+                        'minPoints': node['minpoints'],
+                        'filters': node_filters,
+                        'name': node['name'],
+                        'display_name': display_name
 
-                })
+                    })
+                else:
+                    processed_nodes.append({
+                        'id': node['id'],
+                        'type': 'nwr',
+                        'filters': node_filters,
+                        'name': node['name'],
+                        'display_name': display_name
+
+                    })
 
         parsed_result['nodes'] = processed_nodes
 
