@@ -25,8 +25,10 @@ headers = {
 	"Authorization": f'Bearer {HF_ACCESS_TOKEN}',
 	"Content-Type": "application/json"
 }
-def query(payload, enviroment):
-    endpoint = HF_LLAMA_ENDPOINT_DEV if enviroment == "development" else HF_LLAMA_ENDPOINT_PROD
+def query(payload, environment):
+    
+    endpoint = HF_LLAMA_ENDPOINT_DEV if environment == "development" else HF_LLAMA_ENDPOINT_PROD
+    print(endpoint)
     response = requests.post(endpoint, headers=headers, json=payload)
     # response = response.json()
     return response
