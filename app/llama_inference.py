@@ -9,7 +9,8 @@ logger.add(f"{__name__}.log", rotation="500 MB")
 
 load_dotenv()
 
-HF_LLAMA_ENDPOINT = os.getenv("HF_LLAMA_ENDPOINT")
+HF_LLAMA_ENDPOINT_PROD = os.getenv("HF_LLAMA_ENDPOINT_PROD")
+HF_LLAMA_ENDPOINT_DEV = os.getenv("HF_LLAMA_ENDPOINT_DEV")
 HF_ACCESS_TOKEN = os.getenv("HF_ACCESS_TOKEN")
 HF_MAX_NEW_TOKEN = os.getenv("HF_MAX_NEW_TOKEN", 1048)
 HF_TOP_P = os.getenv("HF_TOP_P", 0.1)
@@ -24,22 +25,23 @@ headers = {
 	"Authorization": f'Bearer {HF_ACCESS_TOKEN}',
 	"Content-Type": "application/json"
 }
-def query(payload):
-    response = requests.post(HF_LLAMA_ENDPOINT, headers=headers, json=payload)
+def query(payload, enviroment):
+    endpoint = HF_LLAMA_ENDPOINT_DEV if enviroment == "development" else HF_LLAMA_ENDPOINT_PROD
+    response = requests.post(endpoint, headers=headers, json=payload)
     # response = response.json()
     return response
     # return response[0]['generated_text']
 
 
 class LlamaInference:
-    def generate(self, sentence):
+    def generate(self, sentence, environment):
         output = query({
             "inputs": sentence.lower(),
             "prompt": PROMPT,
             "max_new_tokens": HF_MAX_NEW_TOKEN,
             "top_p": HF_TOP_P,
             "temperature": HF_TEMPERATURE
-        })
+        }, environment)
         return output
 
     def get_raw_output(self, response):

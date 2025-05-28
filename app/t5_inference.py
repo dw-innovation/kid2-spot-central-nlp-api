@@ -11,7 +11,7 @@ T5_ENDPOINT = os.getenv("T5_ENDPOINT")
 
 class T5Inference:
 
-    def generate(self, sentence):
+    def generate(self, sentence, environment):
         response = requests.post(f"{T5_ENDPOINT}/transform-sentence-to-imr",
                           headers={'accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0'},
                           data=json.dumps({"sentence": sentence}))

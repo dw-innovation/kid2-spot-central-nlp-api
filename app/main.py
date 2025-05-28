@@ -50,6 +50,7 @@ class RequestBody(BaseModel):
     sentence: str
     model: str
     username: str
+    environment: str
 
 
 @app.exception_handler(HTTPException)
@@ -75,10 +76,11 @@ MODEL_INFERENCES = {
 )
 def transform_sentence_to_imr(body: RequestBody):
     sentence = body.sentence.lower()
+    environment = body.environment
     model = body.model
     username = body.username
 
-    response = MODEL_INFERENCES[model].generate(sentence)
+    response = MODEL_INFERENCES[model].generate(sentence, environment)
 
     if response.status_code == status.HTTP_200_OK:
         raw_output = MODEL_INFERENCES[model].get_raw_output(response)
