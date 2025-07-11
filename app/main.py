@@ -15,9 +15,9 @@ from t5_inference import T5Inference
 load_dotenv()
 
 app = FastAPI()
-# client = MongoClient(os.getenv("MONGO_URI"))
-# db = client[os.getenv("MONGO_DB_NAME")]
-# collection = db[os.getenv("MONGO_COLLECTION_NAME")]
+client = MongoClient(os.getenv("MONGO_URI"))
+db = client[os.getenv("MONGO_DB_NAME")]
+collection = db[os.getenv("MONGO_COLLECTION_NAME")]
 
 origins = ["*"]
 app.add_middleware(
@@ -96,7 +96,7 @@ def transform_sentence_to_imr(body: RequestBody):
         'username': username
         }
 
-        # collection.insert_one(model_result)
+        collection.insert_one(model_result)
 
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
         error_response = response.json()
@@ -106,17 +106,17 @@ def transform_sentence_to_imr(body: RequestBody):
         cleaned_message = cleaned_message.replace('\\n', '\\\\n')
 
         error_details = json.loads(cleaned_message)
-        # collection.insert_one({
-        #     'timestamp': error_details.get('timestamp'),
-        #     'inputSentence': error_details.get('inputSentence'),
-        #     'imr': error_details.get('imr'),
-        #     'rawOutput': error_details.get('rawOutput'),
-        #     'status': "error",
-        #     'error': error_details.get('error'),
-        #     'modelVersion': error_details.get('modelVersion'),
-        #     'prompt': error_details.get('prompt'),
-        #     'username': username
-        # })
+        collection.insert_one({
+            'timestamp': error_details.get('timestamp'),
+            'inputSentence': error_details.get('inputSentence'),
+            'imr': error_details.get('imr'),
+            'rawOutput': error_details.get('rawOutput'),
+            'status': "error",
+            'error': error_details.get('error'),
+            'modelVersion': error_details.get('modelVersion'),
+            'prompt': error_details.get('prompt'),
+            'username': username
+        })
 
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=error_response
