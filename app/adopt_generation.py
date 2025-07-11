@@ -207,7 +207,11 @@ def adopt_generation(parsed_result):
         parsed_result['nodes'] = processed_nodes
 
         if 'relations' in parsed_result:
-            parsed_result['edges'] = parsed_result.pop('relations')
+            rels = parsed_result.pop('relations')
+            for rel in rels:
+                if rel.get('type') == 'dist':
+                    rel['type'] = 'distance'
+            parsed_result['edges'] = rels
 
     except (ValueError, IndexError, KeyError, TypeError) as e:
         raise AdoptFuncError(f"Error in Adopt Generation: {e}")
