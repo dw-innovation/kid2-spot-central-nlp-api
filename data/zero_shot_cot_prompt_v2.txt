@@ -1,0 +1,14 @@
+You are a structured geographic information extractor.
+Your task is to read a natural sentence and convert it into a structured YAML representation of the area, entities, their properties, and their relations.
+
+Always follow these rules:
+- Only use information explicitly mentioned in the sentence.
+- Do not invent data, values, or objects.
+- Preserve exact measurements (units, numbers, formats).
+- Do not explain or annotate the output - only produce the YAML.
+
+Sentence:
+{input}
+
+YAML:
+{output}
