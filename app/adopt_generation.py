@@ -58,6 +58,8 @@ def fetch_color_bundles(color:str):
     return r.json()
 
 def build_filters(node):
+    print("===node===")
+    print(node)
     node_name = node["name"]
 
     osm_results = search_osm_tag(node_name)
@@ -95,7 +97,10 @@ def build_filters(node):
             ent_property = node_flt["name"]
             ent_property_imr = search_osm_tag(ent_property)
 
-            ent_property_imr = ent_property_imr[0]['imr'][0]['or']
+            if 'or' in ent_property_imr:
+                ent_property_imr = ent_property_imr[0]['imr'][0]['or']
+            else:
+                ent_property_imr = ent_property_imr[0]['imr'][0]['and']
 
             if 'operator' in node_flt:
                 new_ent_operator = node_flt['operator']
@@ -107,7 +112,7 @@ def build_filters(node):
                     ent_property_imr = ent_property_imr[0]
                     ent_property_imr["operator"] = new_ent_operator
                     ent_property_imr["value"] = new_ent_value
-                elif any(_ent_prop['key'] in ['brand', 'name', 'colour'] for _ent_prop in ent_property_imr):
+                elif any(_ent_prop['key'] in ['brand', 'name', 'colour'] for _ent_prop in ent_property_imr) or any(_ent_prop['value'] in ['***numeric***'] for _ent_prop in ent_property_imr):
                     new_ent_property_imr = []
 
                     if 'colour' in ent_property_imr[0]['key']:
@@ -202,7 +207,11 @@ def adopt_generation(parsed_result):
         parsed_result['nodes'] = processed_nodes
 
         if 'relations' in parsed_result:
-            parsed_result['edges'] = parsed_result.pop('relations')
+            rels = parsed_result.pop('relations')
+            for rel in rels:
+                if rel.get('type') == 'dist':
+                    rel['type'] = 'distance'
+            parsed_result['edges'] = rels
 
     except (ValueError, IndexError, KeyError, TypeError) as e:
         raise AdoptFuncError(f"Error in Adopt Generation: {e}")
