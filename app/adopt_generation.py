@@ -96,10 +96,9 @@ def build_filters(node):
         for node_flt in node["properties"]:
             ent_property = node_flt["name"]
             ent_property_imr = search_osm_tag(ent_property)
-
             if 'or' in ent_property_imr:
                 ent_property_imr = ent_property_imr[0]['imr'][0]['or']
-            else:
+            elif 'and' in ent_property_imr:
                 ent_property_imr = ent_property_imr[0]['imr'][0]['and']
 
             if 'operator' in node_flt:

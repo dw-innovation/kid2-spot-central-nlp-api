@@ -18,27 +18,23 @@ HF_TEMPERATURE = os.getenv("HF_TEMPERATURE", 0.001)
 PROMPT_FILE = os.getenv("PROMPT_FILE")
 PROMPT_FILE_DEV = os.getenv("PROMPT_FILE_DEV")
 
-prompt_file = HF_LLAMA_ENDPOINT_DEV if environment == "development" else HF_LLAMA_ENDPOINT_PROD
-
-
 with open(PROMPT_FILE, 'r') as file:
-    PROMPT_PROD = file.read()
+    PROMPT = file.read()
 
 with open(PROMPT_FILE_DEV, 'r') as file:
     PROMPT_DEV = file.read()
 
 headers = {
-	"Accept" : "application/json",
-	"Authorization": f'Bearer {HF_ACCESS_TOKEN}',
-	"Content-Type": "application/json"
+    "Accept": "application/json",
+    "Authorization": f'Bearer {HF_ACCESS_TOKEN}',
+    "Content-Type": "application/json"
 }
-def query(payload, environment):
-    
-    endpoint = HF_LLAMA_ENDPOINT_DEV if environment == "development" else HF_LLAMA_ENDPOINT_PROD
-    response = requests.post(endpoint, headers=headers, json=payload)
 
-    
-    print(response)
+
+def query(payload, environment):
+    endpoint = HF_LLAMA_ENDPOINT_DEV if environment == "development" else HF_LLAMA_ENDPOINT_PROD
+    print(f'Environment is {environment}')
+    response = requests.post(endpoint, headers=headers, json=payload)
     # response = response.json()
     return response
     # return response[0]['generated_text']
@@ -48,7 +44,7 @@ class LlamaInference:
     def generate(self, sentence, environment):
         output = query({
             "inputs": sentence.lower(),
-            "prompt": PROMPT_DEV if environment == "development" else PROMPT_PROD,
+            "prompt": PROMPT_DEV if environment == "development" else PROMPT,
             "max_new_tokens": HF_MAX_NEW_TOKEN,
             "top_p": HF_TOP_P,
             "temperature": HF_TEMPERATURE
@@ -58,7 +54,6 @@ class LlamaInference:
     def get_raw_output(self, response):
         sentence = response.json()[0]['generated_text']
         return sentence
-
 
     def adopt(self, raw_response):
         result = validate_and_fix_yaml(raw_response)
