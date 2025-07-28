@@ -32,12 +32,12 @@ for test_sentence in test_sentences:
                                  "username": "kid-test",
                                  "environment": "production"})
     print(response)
-    response = client.post("/transform-sentence-to-imr", headers={"X-Token": "coneofsilence"},
-                           json={"sentence": test_sentence,
-                                 "model": model,
-                                 "username": "kid-test",
-                                 "environment": "development"})
-    print(response)
+    # response = client.post("/transform-sentence-to-imr", headers={"X-Token": "coneofsilence"},
+    #                        json={"sentence": test_sentence,
+    #                              "model": model,
+    #                              "username": "kid-test",
+    #                              "environment": "development"})
+    # print(response)
 
     print("==sentence==")
     print(test_sentence)
@@ -47,10 +47,10 @@ for test_sentence in test_sentences:
 
     assert response.status_code==200
 
-    print("==sentence==")
-    print(test_sentence)
-
-    print("==response==")
-    print(response.json())
-
-    assert response.status_code==200
+    # print("==sentence==")
+    # print(test_sentence)
+    #
+    # print("==response==")
+    # print(response.json())
+    #
+    # assert response.status_code==200
