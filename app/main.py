@@ -37,8 +37,8 @@ class Response(BaseModel):
     rawOutput: object
     status: str
     modelVersion: str
-    error: Optional[str]
-    prompt: Optional[str]
+    error: Optional[str] = None
+    prompt: Optional[str] = None
 
 
 class HTTPErrorResponse(BaseModel):
