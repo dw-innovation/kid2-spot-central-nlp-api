@@ -53,6 +53,9 @@ class LlamaInference:
 
     def get_raw_output(self, response):
         sentence = response.json()[0]['generated_text']
+        print("###DEBUG: Raw output before cleanup:", sentence)
+        sentence = sentence.replace('</s>', '')
+        print("###DEBUG: Raw output after cleanup:", sentence)
         return sentence
 
     def adopt(self, raw_response):
