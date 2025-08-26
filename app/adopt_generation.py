@@ -115,7 +115,7 @@ def build_filters(node):
                     ent_property_imr = ent_property_imr[0]
                     ent_property_imr["operator"] = new_ent_operator
                     ent_property_imr["value"] = new_ent_value
-                elif any(_ent_prop['key'] in ['brand', 'name', 'colour'] for _ent_prop in ent_property_imr) or any(_ent_prop['value'] in ['***numeric***'] for _ent_prop in ent_property_imr):
+                elif any(_ent_prop['value'] in ['***example***'] for _ent_prop in ent_property_imr) or any(_ent_prop['value'] in ['***numeric***'] for _ent_prop in ent_property_imr):
                     new_ent_property_imr = []
 
                     if 'colour' in ent_property_imr[0]['key']:
