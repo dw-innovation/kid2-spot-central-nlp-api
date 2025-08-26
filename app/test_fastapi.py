@@ -21,8 +21,9 @@ test_sentences = [
         # "I am looking for locations. I searching for an communications tower who is located within construction site. The aforementioned tower are locate in close distances to H&M.",
         # "i look for a restaurant in makkah, saudi arabia. i would like the restaurant to be either Nusret or Kebap",
         # "show me a place with three benches that are within 30 m of each other 100 m from a river in cologne",
-        "Find a park next to a two lane road in berlin",
-        # "public bin within 50 meters from a bus  stop"
+        # "Find a park next to a two lane road in berlin",
+        # "public bin within 50 meters from a bus  stop",
+        "find me a house with a green door, located with a white picket fence and the number 17 on it",
     ]
 
 for test_sentence in test_sentences:
