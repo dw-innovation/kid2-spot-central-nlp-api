@@ -1,7 +1,6 @@
 inflect==6.0.4
 uvicorn==0.21.1
 fastapi==0.95.1
-diskcache==5.6.1
 pymongo==4.5.0
 loguru==0.7.2
 python-dotenv==1.0.0
