@@ -9,20 +9,17 @@ logger.add(f"{__name__}.log", rotation="500 MB")
 
 load_dotenv()
 
-HF_LLAMA_ENDPOINT_PROD = os.getenv("HF_LLAMA_ENDPOINT_PROD")
-HF_LLAMA_ENDPOINT_DEV = os.getenv("HF_LLAMA_ENDPOINT_DEV")
+HF_LLAMA_ENDPOINT = os.getenv("HF_LLAMA_ENDPOINT")
+
 HF_ACCESS_TOKEN = os.getenv("HF_ACCESS_TOKEN")
 HF_MAX_NEW_TOKEN = os.getenv("HF_MAX_NEW_TOKEN", 1048)
 HF_TOP_P = os.getenv("HF_TOP_P", 0.1)
 HF_TEMPERATURE = os.getenv("HF_TEMPERATURE", 0.001)
+
 PROMPT_FILE = os.getenv("PROMPT_FILE")
-PROMPT_FILE_DEV = os.getenv("PROMPT_FILE_DEV")
 
 with open(PROMPT_FILE, 'r') as file:
     PROMPT = file.read()
-
-with open(PROMPT_FILE_DEV, 'r') as file:
-    PROMPT_DEV = file.read()
 
 headers = {
     "Accept": "application/json",
@@ -32,18 +29,15 @@ headers = {
 
 
 def query(payload, environment):
-    endpoint = HF_LLAMA_ENDPOINT_DEV if environment == "development" else HF_LLAMA_ENDPOINT_PROD
+    endpoint = HF_LLAMA_ENDPOINT
     response = requests.post(endpoint, headers=headers, json=payload)
-    # response = response.json()
     return response
-    # return response[0]['generated_text']
-
 
 class LlamaInference:
     def generate(self, sentence, environment):
         output = query({
             "inputs": sentence.lower(),
-            "prompt": PROMPT_DEV if environment == "development" else PROMPT,
+            "prompt": PROMPT,
             "max_new_tokens": HF_MAX_NEW_TOKEN,
             "top_p": HF_TOP_P,
             "temperature": HF_TEMPERATURE
