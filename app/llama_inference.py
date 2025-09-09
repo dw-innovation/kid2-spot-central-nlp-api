@@ -33,7 +33,6 @@ headers = {
 
 def query(payload, environment):
     endpoint = HF_LLAMA_ENDPOINT_DEV if environment == "development" else HF_LLAMA_ENDPOINT_PROD
-    print(f'Environment is {environment}')
     response = requests.post(endpoint, headers=headers, json=payload)
     # response = response.json()
     return response
@@ -53,9 +52,6 @@ class LlamaInference:
 
     def get_raw_output(self, response):
         sentence = response.json()[0]['generated_text']
-        print("###DEBUG: Raw output before cleanup:", sentence)
-        sentence = sentence.replace('</s>', '')
-        print("###DEBUG: Raw output after cleanup:", sentence)
         return sentence
 
     def adopt(self, raw_response):
