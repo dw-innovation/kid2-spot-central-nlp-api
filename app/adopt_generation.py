@@ -3,14 +3,12 @@ import os
 import requests
 import sys
 from collections.abc import Iterable
-from diskcache import Cache
 from dotenv import load_dotenv
 
 load_dotenv()
 PROJECT_PATH = os.getcwd()
 sys.path.append(PROJECT_PATH)
 
-cache = Cache("tmp")
 SEARCH_ENDPOINT = os.getenv("SEARCH_ENDPOINT")
 COLOR_BUNDLE_SEARCH = os.getenv("COLOR_BUNDLE_SEARCH")
 PLURAL_ENGINE = inflect.engine()
@@ -42,7 +40,6 @@ class AdoptFuncError(Exception):
         super().__init__(self.message)
 
 
-# @cache.memoize()
 def search_osm_tag(entity):
     PARAMS = {"word": entity, "limit": 1, "detail": False}
     r = requests.get(
@@ -58,10 +55,7 @@ def fetch_color_bundles(color:str):
     return r.json()
 
 def build_filters(node):
-    print("===node===")
-    print(node)
     node_name = node["name"]
-
     osm_results = search_osm_tag(node_name)
     if len(osm_results) == 0:
         return None
@@ -79,8 +73,6 @@ def build_filters(node):
             for item in ent_filters
         ]
 
-    additional_att_tag = None
-
     processed_filters = []
     if len(ent_filters) > 0:
         if is_nested_list(ent_filters):
@@ -96,7 +88,6 @@ def build_filters(node):
         for node_flt in node["properties"]:
             ent_property = node_flt["name"]
             ent_property_imr = search_osm_tag(ent_property)
-
             imr_block = ent_property_imr[0]['imr'][0]
             if 'or' in imr_block:
                 ent_property_imr = imr_block['or']
@@ -118,7 +109,7 @@ def build_filters(node):
                 elif any(_ent_prop['value'] in ['***example***'] for _ent_prop in ent_property_imr) or any(_ent_prop['value'] in ['***numeric***'] for _ent_prop in ent_property_imr):
                     new_ent_property_imr = []
 
-                    if 'colour' in ent_property_imr[0]['key']:
+                    if 'colour' in ent_property_imr[0]['key'] or 'color' in ent_property_imr[0]['key']:
                         color_values = fetch_color_bundles(new_ent_value)['color_values']
                         for color_value in color_values:
                             for item in ent_property_imr:
@@ -134,6 +125,9 @@ def build_filters(node):
 
                     new_ent_property_imr = {"or": new_ent_property_imr}
                     ent_property_imr = new_ent_property_imr
+                else:
+                    new_ent_property_imr = {"or": ent_property_imr}
+                    ent_property_imr = new_ent_property_imr
             else:
                 if isinstance(ent_property_imr, list):
                     new_ent_property_imr = {"or": ent_property_imr}
@@ -142,9 +136,6 @@ def build_filters(node):
             node_flts.append(ent_property_imr)
 
         processed_filters = [{"and": node_flts}]
-
-    if additional_att_tag:
-        processed_filters = [{"and": [processed_filters[0], additional_att_tag]}]
 
     and_or_in_filters = False
     for processed_filter in processed_filters:
@@ -157,6 +148,9 @@ def build_filters(node):
 
     if not and_or_in_filters:
         processed_filters = [{"and": processed_filters}]
+
+    print("===processed_filters===")
+    print(processed_filters)
 
     return processed_filters
 
