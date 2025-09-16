@@ -17,6 +17,18 @@ DEFAULT_DISTANCE = os.getenv("DEFAULT_DISTANCE")
 load_dotenv()
 
 def flatten(xs):
+    """
+    Recursively flatten a nested iterable into a flat generator.
+
+    Args:
+        xs (Iterable): Possibly nested iterable (lists/tuples/sets, etc.).
+
+    Yields:
+        Any: Each non-iterable element from the nested structure, preserving order.
+
+    Notes:
+        - Strings and bytes are treated as scalars (not iterated character-by-character).
+    """
     for x in xs:
         if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
             yield from flatten(x)
@@ -25,6 +37,18 @@ def flatten(xs):
 
 
 def is_nested_list(l):
+    """
+    Check whether a list contains at least one nested list.
+
+    Args:
+        l (list): The list to inspect.
+
+    Returns:
+        bool: True if any element is a list, otherwise False.
+
+    Raises:
+        TypeError: If `l` is not iterable (rare in this usage).
+    """
     try:
         next(x for x in l if isinstance(x, list))
 
@@ -35,12 +59,31 @@ def is_nested_list(l):
 
 
 class AdoptFuncError(Exception):
+    """
+    Custom exception for errors raised during the adopt-generation pipeline.
+
+    Attributes:
+        message (str): Human-readable description of the error cause.
+    """
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
 
 
 def search_osm_tag(entity):
+    """
+    Query the OSM tag search service for an entity name and return IMR hints.
+
+    Args:
+        entity (str): Tag or concept to look up (e.g., 'restaurant', 'door color').
+
+    Returns:
+        dict | list: Parsed JSON response from the search endpoint.
+
+    Notes:
+        - Uses the `SEARCH_ENDPOINT` URL from environment variables.
+        - SSL verification is disabled (verify=False).
+    """
     PARAMS = {"word": entity, "limit": 1, "detail": False}
     r = requests.get(
         url=SEARCH_ENDPOINT, params=PARAMS, verify=False
@@ -48,6 +91,19 @@ def search_osm_tag(entity):
     return r.json()
 
 def fetch_color_bundles(color:str):
+    """
+    Fetch a color bundle (synonyms/hex variants) for a given color name.
+
+    Args:
+        color (str): Base color string (e.g., 'brown', 'green').
+
+    Returns:
+        dict: Parsed JSON containing `color_values` and related metadata.
+
+    Notes:
+        - Uses `COLOR_BUNDLE_SEARCH` from environment variables.
+        - SSL verification is disabled (verify=False).
+    """
     PARAMS = {"color": color, "limit": 1, "detail": False}
     r = requests.get(
         url=COLOR_BUNDLE_SEARCH, params=PARAMS, verify=False
@@ -55,6 +111,36 @@ def fetch_color_bundles(color:str):
     return r.json()
 
 def build_filters(node):
+    """
+    Build IMR-compatible filter blocks for a single parsed node.
+
+    Workflow:
+        1) Look up base filters for the node's name via `search_osm_tag`.
+        2) Special-case brand entities (name starts with 'brand:') to inject
+           the actual brand value in place of placeholders.
+        3) If node has `properties`, look up property IMR blocks and merge them:
+           - Respect explicit operators and values from the node properties.
+           - Expand color properties via `fetch_color_bundles`.
+           - Normalize into {"and": [...]} and {"or": [...]} structures.
+
+    Args:
+        node (dict): Parsed node with fields like:
+            {
+              "id": int,
+              "name": str,
+              "type": "nwr" | "cluster",
+              "properties": [
+                {"name": str, "operator": str, "value": Any}, ...
+              ]
+            }
+
+    Returns:
+        list[dict] | None: A list of filter dicts (e.g., [{"and": [...]}, ...]).
+                           Returns None if no OSM results found.
+
+    Raises:
+        ValueError: When the property IMR block does not contain 'or' or 'and'.
+    """
     node_name = node["name"]
     osm_results = search_osm_tag(node_name)
     if len(osm_results) == 0:
@@ -156,6 +242,31 @@ def build_filters(node):
 
 
 def adopt_generation(parsed_result):
+    """
+    Convert a parsed IMR-like structure into the final graph shape used downstream.
+
+    Transformations:
+        - Normalize `area` (drop 'value' for bbox).
+        - Rename top-level 'entities' to 'nodes', and enrich each node with:
+            * filters built by `build_filters`
+            * pluralized `display_name` (unless already plural or brand-prefixed)
+            * node type: 'nwr' or 'cluster' if `minpoints` is provided
+        - Convert 'relations' to 'edges', normalizing type 'dist' -> 'distance'.
+
+    Args:
+        parsed_result (dict): Parsed YAML/JSON structure containing at least:
+            {
+              "area": {"type": "bbox" | "...", ...},
+              "entities": [ { "id": int, "name": str, "type": "nwr", ... }, ... ],
+              "relations": [ ... ]  # optional
+            }
+
+    Returns:
+        dict: The transformed result with 'nodes' and optional 'edges'.
+
+    Raises:
+        AdoptFuncError: Wraps ValueError/IndexError/KeyError/TypeError with context.
+    """
     try:
         area = parsed_result['area']
         if area['type'] == 'bbox':

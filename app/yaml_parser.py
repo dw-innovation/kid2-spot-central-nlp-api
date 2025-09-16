@@ -17,6 +17,33 @@ SCHEMA = {
 
 
 def validate_and_fix_yaml(yaml_text):
+    """
+    Attempts to safely parse a YAML string, and recursively correct common formatting
+    issues if parsing fails.
+
+    This is primarily used for model-generated YAML that may contain small errors
+    such as:
+      - invalid tokens (e.g. `</s>`)
+      - missing quotes around values
+      - malformed lists or dicts
+      - improperly indented or split keys like 'id'
+
+    Args:
+        yaml_text (str): The raw YAML string output to be parsed and validated.
+
+    Returns:
+        dict: Parsed and corrected YAML content as a Python dictionary.
+
+    Notes:
+        - If parsing fails due to common known issues, the function attempts to correct
+          them and recursively calls itself.
+        - If parsing fails irrecoverably, the function may return `None` or raise an error,
+          depending on the failure point.
+
+    Examples:
+        >>> validate_and_fix_yaml("area:\n  name: Bonn\n  type: city")
+        {'area': {'name': 'Bonn', 'type': 'city'}}
+    """
     yaml_text = yaml_text.replace('</s>', '')
     try:
         result = yaml.safe_load(yaml_text)
