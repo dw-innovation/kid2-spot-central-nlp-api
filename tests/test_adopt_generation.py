@@ -2,14 +2,25 @@ import unittest
 
 from app.adopt_generation import build_filters, adopt_generation
 
-'''
-Execute python -m unittest tests.test_adopt_generation
-'''
+"""
+Unit tests for functions in adopt_generation.py, including:
+  - `build_filters`: builds OSM-compatible filter logic based on node definitions.
+  - `adopt_generation`: transforms parsed YAML into the final IMR node structure.
+
+To execute:
+    python -m unittest tests.test_adopt_generation
+"""
 
 
 class TestAdoptFunction(unittest.TestCase):
+    """
+    Test suite for validating filter-building and IMR adaptation logic.
+    """
 
     # def test_property_wo_operator(self):
+    #     """
+    #     Ensure fallback filters are built when properties lack explicit operators.
+    #     """
     #     node = {'id': 2, 'name': 'restaurant', 'properties': [{'name': 'outdoor seating'}], 'type': 'nwr'}
     #     result = build_filters(node)
     #     expected_output = [
@@ -98,6 +109,13 @@ class TestAdoptFunction(unittest.TestCase):
     #     self.assertEqual(result, expected_output)
 
     def test_complex_filters(self):
+        """
+        Test that complex filter sets are correctly constructed for multi-property nodes.
+
+        In this case:
+        - Input node represents a 'house' with a property 'door color = green'.
+        - Output should include a set of AND/OR filters for 'building' and 'barrier' keys.
+        """
         node = {'id': 0, 'name': 'house', 'properties': [{'name': 'door color', 'operator': '=', 'value': 'green'}], 'type': 'nwr'}
         result = build_filters(node)
         expected_result = [{'and': [{'or': [{'key': 'building', 'operator': '=', 'value': 'terrace'},
