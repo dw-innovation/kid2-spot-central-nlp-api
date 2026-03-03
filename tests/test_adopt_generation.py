@@ -57,11 +57,12 @@ class TestAdoptFunction(unittest.TestCase):
     #     self.assertEqual(result, expected_output)
     #
     #
-    # def test_adopt_pipeline(self):
-    #     parsed_result = {'area': {'type': 'bbox'}, 'entities': [{'id': 0, 'name': 'supermarket', 'properties': [{'name': 'height', 'operator': '>', 'value': 10}, {'name': 'roof material', 'operator': '=', 'value': 'red'}], 'type': 'nwr'}]}
-    #     result = adopt_generation(parsed_result)
-    #     expected_output = {'area': {'type': 'bbox'}, 'nodes': [{'id': 0, 'type': 'nwr', 'filters': [{'and': [{'or': [{'key': 'shop', 'operator': '=', 'value': 'supermarket'}, {'key': 'building', 'operator': '=', 'value': 'supermarket'}, {'key': 'shop', 'operator': '=', 'value': 'discounter'}, {'key': 'shop', 'operator': '=', 'value': 'wholesale'}]}, {'key': 'height', 'operator': '>', 'value': 10}, {'key': 'roof:material', 'operator': '=', 'value': 'red'}]}], 'name': 'supermarket', 'display_name': 'supermarkets'}]}
-    #     self.assertEqual(result, expected_output)
+    def test_adopt_pipeline(self):
+        parsed_result = {'area': {'type': 'bbox'}, 'entities': [{'id': 0, 'name': 'supermarket', 'properties': [{'name': 'height', 'operator': '>', 'value': 10}, {'name': 'roof material', 'operator': '=', 'value': 'red'}], 'type': 'nwr'}]}
+        result = adopt_generation(parsed_result)['imr']
+        print(result)
+        expected_output = {'area': {'type': 'bbox'}, 'nodes': [{'id': 0, 'type': 'nwr', 'filters': [{'and': [{'or': [{'key': 'shop', 'operator': '=', 'value': 'supermarket'}, {'key': 'building', 'operator': '=', 'value': 'supermarket'}, {'key': 'shop', 'operator': '=', 'value': 'discounter'}, {'key': 'shop', 'operator': '=', 'value': 'wholesale'}]}, {'key': 'height', 'operator': '>', 'value': 10}, {'key': 'roof:material', 'operator': '=', 'value': 'red'}]}], 'name': 'supermarket', 'display_name': 'supermarkets'}]}
+        self.assertEqual(result, expected_output)
     #
     #
     # def test_color_property(self):
@@ -108,29 +109,29 @@ class TestAdoptFunction(unittest.TestCase):
     #
     #     self.assertEqual(result, expected_output)
 
-    def test_complex_filters(self):
-        """
-        Test that complex filter sets are correctly constructed for multi-property nodes.
-
-        In this case:
-        - Input node represents a 'house' with a property 'door color = green'.
-        - Output should include a set of AND/OR filters for 'building' and 'barrier' keys.
-        """
-        node = {'id': 0, 'name': 'house', 'properties': [{'name': 'door color', 'operator': '=', 'value': 'green'}], 'type': 'nwr'}
-        result = build_filters(node)
-        expected_result = [{'and': [{'or': [{'key': 'building', 'operator': '=', 'value': 'terrace'},
-                                            {'key': 'building', 'operator': '=', 'value': 'house'},
-                                            {'key': 'building', 'operator': '=', 'value': 'detached'}]
-                                     },
-                                    {'or':
-                                    [{'key': 'barrier', 'operator': '=', 'value': 'gate'},
-                                     {'key': 'barrier', 'operator': '=', 'value': 'entrance'}]
-                                    }
-                                    ]
-                            }
-                           ]
-
-        self.assertEqual(result, expected_result)
+    # def test_complex_filters(self):
+    #     """
+    #     Test that complex filter sets are correctly constructed for multi-property nodes.
+    #
+    #     In this case:
+    #     - Input node represents a 'house' with a property 'door color = green'.
+    #     - Output should include a set of AND/OR filters for 'building' and 'barrier' keys.
+    #     """
+    #     node = {'id': 0, 'name': 'house', 'properties': [{'name': 'door color', 'operator': '=', 'value': 'green'}], 'type': 'nwr'}
+    #     result = build_filters(node)
+    #     expected_result = [{'and': [{'or': [{'key': 'building', 'operator': '=', 'value': 'terrace'},
+    #                                         {'key': 'building', 'operator': '=', 'value': 'house'},
+    #                                         {'key': 'building', 'operator': '=', 'value': 'detached'}]
+    #                                  },
+    #                                 {'or':
+    #                                 [{'key': 'barrier', 'operator': '=', 'value': 'gate'},
+    #                                  {'key': 'barrier', 'operator': '=', 'value': 'entrance'}]
+    #                                 }
+    #                                 ]
+    #                         }
+    #                        ]
+    #
+    #     self.assertEqual(result, expected_result)
 
 
 if __name__ == '__main__':

@@ -16,10 +16,10 @@ HF_MAX_NEW_TOKEN = os.getenv("HF_MAX_NEW_TOKEN", 1048)
 HF_TOP_P = os.getenv("HF_TOP_P", 0.1)
 HF_TEMPERATURE = os.getenv("HF_TEMPERATURE", 0.001)
 
-PROMPT_FILE = os.getenv("PROMPT_FILE")
-
-with open(PROMPT_FILE, 'r') as file:
-    PROMPT = file.read()
+# PROMPT_FILE = os.getenv("PROMPT_FILE")
+#
+# with open(PROMPT_FILE, 'r') as file:
+#     PROMPT = file.read()
 
 headers = {
     "Accept": "application/json",
@@ -75,7 +75,6 @@ class LlamaInference:
         """
         output = query({
             "inputs": sentence.lower(),
-            "prompt": PROMPT,
             "max_new_tokens": HF_MAX_NEW_TOKEN,
             "top_p": HF_TOP_P,
             "temperature": HF_TEMPERATURE

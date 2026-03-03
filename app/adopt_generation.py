@@ -234,10 +234,6 @@ def build_filters(node):
 
     if not and_or_in_filters:
         processed_filters = [{"and": processed_filters}]
-
-    print("===processed_filters===")
-    print(processed_filters)
-
     return processed_filters
 
 
@@ -267,6 +263,7 @@ def adopt_generation(parsed_result):
     Raises:
         AdoptFuncError: Wraps ValueError/IndexError/KeyError/TypeError with context.
     """
+    display = []
     try:
         area = parsed_result['area']
         if area['type'] == 'bbox':
@@ -287,6 +284,24 @@ def adopt_generation(parsed_result):
 
             if display_name.startswith('brand:'):
                 display_name = display_name.replace('brand:', '')
+
+            display_item = {'name': node['name'], 'display_name': display_name}
+
+            if 'properties' in node:
+                #<PROP1>", "<PROPS2><Comparator><VALUE2>"
+                props = []
+                for prop in node['properties']:
+                    prop_name = prop['name']
+                    if 'value' in prop:
+                        prop_value = prop['value']
+                        prop_operator = prop['operator']
+                        props.append(f'{prop_name}{prop_operator}{prop_value}')
+                    else:
+                        props.append(f'{prop_name}')
+
+                display_item['display_props'] = props
+
+            display.append(display_item)
 
             node_filters = build_filters(node)
 
@@ -323,4 +338,7 @@ def adopt_generation(parsed_result):
 
     except (ValueError, IndexError, KeyError, TypeError) as e:
         raise AdoptFuncError(f"Error in Adopt Generation: {e}")
-    return parsed_result
+
+    all_result = {'imr': parsed_result,
+                  'display': display}
+    return all_result
