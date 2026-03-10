@@ -2,13 +2,15 @@ import json
 import os
 from typing import Dict, Optional
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Request, status,Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pymongo import MongoClient
 from datetime import datetime
+
+from sagemaker_inference import SageMakerInference
 from llama_inference import LlamaInference
 from t5_inference import T5Inference
 
@@ -104,7 +106,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 MODEL_INFERENCES = {
     'llama': LlamaInference(),
-    't5': T5Inference()
+    't5': T5Inference(),
+    'sagemaker': SageMakerInference()
 }
 
 
