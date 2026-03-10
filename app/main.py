@@ -1,16 +1,14 @@
 import json
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, status,Response
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from pymongo import MongoClient
 from datetime import datetime
-
-from sagemaker_inference import SageMakerInference
 from llama_inference import LlamaInference
 from t5_inference import T5Inference
 
@@ -47,6 +45,7 @@ class Response(BaseModel):
     """
     timestamp: str
     imr: Dict
+    display: List[Dict]
     inputSentence: str
     status: str
     rawOutput: object
@@ -106,8 +105,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 MODEL_INFERENCES = {
     'llama': LlamaInference(),
-    't5': T5Inference(),
-    'sagemaker': SageMakerInference()
+    't5': T5Inference()
 }
 
 
@@ -146,7 +144,8 @@ def transform_sentence_to_imr(body: RequestBody):
         model_result = {
         'timestamp': f'{datetime.now():%Y-%m-%d %H:%M:%S%z}',
         'inputSentence': sentence,
-        'imr': adopted_result,
+        'imr': adopted_result['imr'],
+        'display': adopted_result['display'],
         'rawOutput': raw_output,
         'modelVersion': model,
         'status': 'success',
@@ -167,6 +166,7 @@ def transform_sentence_to_imr(body: RequestBody):
             'timestamp': error_details.get('timestamp'),
             'inputSentence': error_details.get('inputSentence'),
             'imr': error_details.get('imr'),
+            'display': error_details.get('display'),
             'rawOutput': error_details.get('rawOutput'),
             'status': "error",
             'error': error_details.get('error'),
