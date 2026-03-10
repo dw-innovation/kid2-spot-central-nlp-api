@@ -285,22 +285,7 @@ def adopt_generation(parsed_result):
             if display_name.startswith('brand:'):
                 display_name = display_name.replace('brand:', '')
 
-            display_item = {'name': node['name'], 'display_name': display_name}
-
-            if 'properties' in node:
-                #<PROP1>", "<PROPS2><Comparator><VALUE2>"
-                props = []
-                for prop in node['properties']:
-                    prop_name = prop['name']
-                    if 'value' in prop:
-                        prop_value = prop['value']
-                        prop_operator = prop['operator']
-                        props.append(f'{prop_name}{prop_operator}{prop_value}')
-                    else:
-                        props.append(f'{prop_name}')
-
-                display_item['display_props'] = props
-
+            display_item = {'name': node['name'], 'display_name': display_name, 'display_props': node['properties'] if 'properties' in node else [],}
             display.append(display_item)
 
             node_filters = build_filters(node)
