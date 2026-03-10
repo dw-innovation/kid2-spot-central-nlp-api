@@ -23,9 +23,6 @@ class SageMakerInference:
     """
     def __init__(self):
         session = boto3.Session(profile_name=os.getenv("AWS_PROFILE"))
-        print(os.getenv("AWS_REGION"))
-        print(os.getenv("AWS_ENDPOINT_NAME"))
-        print(os.getenv("AWS_PROFILE"))
         self.client = session.client(
             "sagemaker-runtime",
             region_name=os.getenv("AWS_REGION"),
