@@ -14,8 +14,6 @@ COLOR_BUNDLE_SEARCH = os.getenv("COLOR_BUNDLE_SEARCH")
 PLURAL_ENGINE = inflect.engine()
 DEFAULT_DISTANCE = os.getenv("DEFAULT_DISTANCE")
 
-load_dotenv()
-
 def flatten(xs):
     """
     Recursively flatten a nested iterable into a flat generator.
@@ -291,26 +289,19 @@ def adopt_generation(parsed_result):
             node_filters = build_filters(node)
 
             if node_filters:
+                node_entry = {
+                    'id': node['id'],
+                    'type': 'nwr',
+                    'filters': node_filters,
+                    'name': node['name'],
+                    'display_name': display_name,
+                    'display_props': node['properties']
+                }
                 if 'minpoints' in node:
-                    processed_nodes.append({
-                        'id': node['id'],
-                        'type': 'cluster',
-                        'maxDistance': node['maxdistance'],
-                        'minPoints': node['minpoints'],
-                        'filters': node_filters,
-                        'name': node['name'],
-                        'display_name': display_name,
-                        'display_props': node['properties']
-                    })
-                else:
-                    processed_nodes.append({
-                        'id': node['id'],
-                        'type': 'nwr',
-                        'filters': node_filters,
-                        'name': node['name'],
-                        'display_name': display_name,
-                        'display_props': node['properties']
-                    })
+                    node_entry['type'] = 'cluster'
+                    node_entry['maxDistance'] = node['maxdistance']
+                    node_entry['minPoints'] = node['minpoints']
+                processed_nodes.append(node_entry)
 
         parsed_result['nodes'] = processed_nodes
 
