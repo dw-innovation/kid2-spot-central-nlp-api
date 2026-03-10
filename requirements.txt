@@ -5,7 +5,7 @@ loguru==0.7.2
 python-dotenv==1.0.0
 httpx==0.26.0
 requests==2.31.0
-inflect==7.5.0
+inflect
 pyyaml==6.0.2
 sagemaker==2.257.0
 boto3==1.42.59
