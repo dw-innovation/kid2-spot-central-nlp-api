@@ -299,8 +299,8 @@ def adopt_generation(parsed_result):
                         'minPoints': node['minpoints'],
                         'filters': node_filters,
                         'name': node['name'],
-                        'display_name': display_name
-
+                        'display_name': display_name,
+                        'display_props': node['properties']
                     })
                 else:
                     processed_nodes.append({
@@ -308,8 +308,8 @@ def adopt_generation(parsed_result):
                         'type': 'nwr',
                         'filters': node_filters,
                         'name': node['name'],
-                        'display_name': display_name
-
+                        'display_name': display_name,
+                        'display_props': node['properties']
                     })
 
         parsed_result['nodes'] = processed_nodes
@@ -324,6 +324,4 @@ def adopt_generation(parsed_result):
     except (ValueError, IndexError, KeyError, TypeError) as e:
         raise AdoptFuncError(f"Error in Adopt Generation: {e}")
 
-    all_result = {'imr': parsed_result,
-                  'display': display}
-    return all_result
+    return parsed_result
