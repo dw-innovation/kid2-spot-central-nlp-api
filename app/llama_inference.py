@@ -118,6 +118,8 @@ class LlamaInference:
         Raises:
             Exception: If validation or adoption fails downstream.
         """
+        print("===RAW RESPONSE===")
+        print(raw_response)
         result = validate_and_fix_yaml(raw_response)
         result = adopt_generation(result)
         return result

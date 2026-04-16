@@ -263,12 +263,21 @@ def adopt_generation(parsed_result):
     Raises:
         AdoptFuncError: Wraps ValueError/IndexError/KeyError/TypeError with context.
     """
+    print("====parsed result====")
+    print(parsed_result)
     display = []
     try:
+        if 'area' not in parsed_result:
+            parsed_result['area'] = {
+                'type': 'bbox'
+            }
         area = parsed_result['area']
         if area['type'] == 'bbox':
             if 'value' in area:
                 del area['value']
+
+        if 'filter' in parsed_result:
+            parsed_result['entities'] = parsed_result.pop('filter')
 
         parsed_result['nodes'] = parsed_result.pop('entities')
 
