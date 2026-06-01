@@ -1,16 +1,18 @@
 import json
 import os
-from typing import Dict, Optional, List
+from datetime import datetime
+from typing import Dict, List, Optional
+
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, status,Response
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from llama_inference import LlamaInference
+from llmhub_inference import LLMHubInference
 from pydantic import BaseModel
 from pymongo import MongoClient
-from datetime import datetime
 from sagemaker_inference import SageMakerInference
-from llama_inference import LlamaInference
 from t5_inference import T5Inference
 
 load_dotenv()
@@ -44,11 +46,11 @@ class Response(BaseModel):
         error (Optional[str]): Optional error message (only present on error).
         prompt (Optional[str]): Optional prompt sent to the model.
     """
+
     timestamp: str
     imr: Dict
     display: List[Dict]
     inputSentence: str
-    status: str
     rawOutput: object
     status: str
     modelVersion: str
@@ -64,6 +66,7 @@ class HTTPErrorResponse(BaseModel):
         message (str): Description of the error.
         status (str): Error status indicator (e.g., 'error').
     """
+
     message: str
     status: str
 
@@ -78,6 +81,7 @@ class RequestBody(BaseModel):
         username (str): Username of the requester.
         environment (str): Execution environment (e.g., dev, prod).
     """
+
     sentence: str
     model: str
     username: str
@@ -105,9 +109,10 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 MODEL_INFERENCES = {
-    'llama': LlamaInference(),
-    't5': T5Inference(),
-    'sagemaker': SageMakerInference()
+    "llama": LlamaInference(),
+    "t5": T5Inference(),
+    "sagemaker": SageMakerInference(),
+    "llmhub": LLMHubInference(),
 }
 
 
@@ -144,42 +149,44 @@ def transform_sentence_to_imr(body: RequestBody):
         adopted_result = MODEL_INFERENCES[model].adopt(raw_output)
 
         model_result = {
-        'timestamp': f'{datetime.now():%Y-%m-%d %H:%M:%S%z}',
-        'inputSentence': sentence,
-        'imr': adopted_result['imr'],
-        'display': adopted_result['display'],
-        'rawOutput': raw_output,
-        'modelVersion': model,
-        'status': 'success',
-        'username': username
+            "timestamp": f"{datetime.now():%Y-%m-%d %H:%M:%S%z}",
+            "inputSentence": sentence,
+            "imr": adopted_result["imr"],
+            "display": adopted_result["display"],
+            "rawOutput": raw_output,
+            "modelVersion": model,
+            "status": "success",
+            "username": username,
         }
 
-        collection.insert_one(model_result)
+        # collection.insert_one(model_result)
 
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
         error_response = response.json()
-        error_message = error_response.get('message', '')
+        error_message = error_response.get("message", "")
 
-        cleaned_message = error_message.replace('\'', '\"').replace('None', 'null')
-        cleaned_message = cleaned_message.replace('\\n', '\\\\n')
+        cleaned_message = error_message.replace("'", '"').replace("None", "null")
+        cleaned_message = cleaned_message.replace("\\n", "\\\\n")
 
         error_details = json.loads(cleaned_message)
-        collection.insert_one({
-            'timestamp': error_details.get('timestamp'),
-            'inputSentence': error_details.get('inputSentence'),
-            'imr': error_details.get('imr'),
-            'display': error_details.get('display'),
-            'rawOutput': error_details.get('rawOutput'),
-            'status': "error",
-            'error': error_details.get('error'),
-            'modelVersion': error_details.get('modelVersion'),
-            'prompt': error_details.get('prompt'),
-            'username': username
-        })
+        # collection.insert_one(
+        #     {
+        #         "timestamp": error_details.get("timestamp"),
+        #         "inputSentence": error_details.get("inputSentence"),
+        #         "imr": error_details.get("imr"),
+        #         "display": error_details.get("display"),
+        #         "rawOutput": error_details.get("rawOutput"),
+        #         "status": "error",
+        #         "error": error_details.get("error"),
+        #         "modelVersion": error_details.get("modelVersion"),
+        #         "prompt": error_details.get("prompt"),
+        #         "username": username,
+        #     }
+        # )
 
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=error_response
-        )
+        # raise HTTPException(
+        #     status_code=status.HTTP_400_BAD_REQUEST, detail=error_response
+        # )
     else:
         raise HTTPException(
             status_code=response.status_code, detail="An unexpected error occurred."

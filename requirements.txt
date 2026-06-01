@@ -10,3 +10,5 @@ inflect==7.5.0
 pyyaml==6.0.2
 sagemaker==2.257.0
 boto3==1.42.59
+langchain
+langchain-openai
