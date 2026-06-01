@@ -5,6 +5,7 @@ import requests
 from adopt_generation import adopt_generation
 from dotenv import load_dotenv
 from imr_schema import IMROutput
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from loguru import logger
 from yaml_parser import validate_and_fix_yaml
@@ -55,7 +56,12 @@ def query(payload, environment):
         LLMHubResponse: Wrapper with generated content and HTTP status code.
     """
     try:
-        response = structured_llm.invoke(payload["inputs"])
+        sentence = payload["inputs"]
+        messages = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=f"SENTENCE: {sentence}"),
+        ]
+        response = structured_llm.invoke(messages)
         return LLMHubResponse(content=response, status_code=200)
     except Exception as e:
         return LLMHubResponse(content=str(e), status_code=400)
