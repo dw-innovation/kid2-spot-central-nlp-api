@@ -1,4 +1,5 @@
 import yaml
+import re
 
 SCHEMA = {
     'type': 'object',
@@ -45,6 +46,8 @@ def validate_and_fix_yaml(yaml_text):
         {'area': {'name': 'Bonn', 'type': 'city'}}
     """
     yaml_text = yaml_text.replace('</s>', '')
+    yaml_text = re.sub(r"^\s*`+.*?\n", "", yaml_text)  # removes ```yaml\n etc.
+    yaml_text = re.sub(r"^\s*`+", "", yaml_text)  # removes stray leading
     try:
         result = yaml.safe_load(yaml_text)
         # validate(instance=result, schema=SCHEMA)

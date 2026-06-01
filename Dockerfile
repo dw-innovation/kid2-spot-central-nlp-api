@@ -1,10 +1,7 @@
-ARG PYTHON=python3
-ARG PYTHON_VERSION=3.8.13
+FROM python:3.9.12-slim
 
-FROM ubuntu:20.04
-
-ENV http_proxy=ADD_PROXY
-ENV https_proxy=ADD_PROXY
+# ENV http_proxy=ADD_PROXY
+# ENV https_proxy=ADD_PROXY
 
 RUN apt-get update \
     && apt-get upgrade -y \
