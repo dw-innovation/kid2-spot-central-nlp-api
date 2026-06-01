@@ -121,7 +121,7 @@ MODEL_INFERENCES = {
     response_model=Response,
     status_code=status.HTTP_200_OK,
 )
-def transform_sentence_to_imr(body: RequestBody):
+async def transform_sentence_to_imr(body: RequestBody):
     """
     Transforms an input sentence into an intermediate representation (IMR)
     using the specified model ('llama' or 't5').
@@ -143,7 +143,7 @@ def transform_sentence_to_imr(body: RequestBody):
     model = body.model
     username = body.username
 
-    response = MODEL_INFERENCES[model].generate(sentence, environment)
+    response = await MODEL_INFERENCES[model].generate(sentence, environment)
     if response.status_code == status.HTTP_200_OK:
         raw_output = MODEL_INFERENCES[model].get_raw_output(response)
         adopted_result = MODEL_INFERENCES[model].adopt(raw_output)

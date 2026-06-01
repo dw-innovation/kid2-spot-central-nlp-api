@@ -18,6 +18,8 @@ llm = ChatOpenAI(
     model=os.getenv("LLMHUB_MODEL"),
     base_url=os.getenv("LLMHUB_ENDPOINT"),
     api_key=os.getenv("LLMHUB_KEY"),
+    timeout=120,  # seconds — tune to your model's typical latency
+    max_retries=2,
 )
 
 structured_llm = llm.with_structured_output(IMROutput)
@@ -36,7 +38,7 @@ class LLMHubResponse:
     status_code: int = 200
 
 
-def query(payload, environment):
+async def query(payload, environment):
     """
     Send a POST request to the configured Hugging Face LLaMA inference endpoint.
 
@@ -61,7 +63,7 @@ def query(payload, environment):
             SystemMessage(content=SYSTEM_PROMPT),
             HumanMessage(content=f"SENTENCE: {sentence}"),
         ]
-        response = structured_llm.invoke(messages)
+        response = await structured_llm.ainvoke(messages)
         return LLMHubResponse(content=response, status_code=200)
     except Exception as e:
         return LLMHubResponse(content=str(e), status_code=400)
@@ -77,7 +79,7 @@ class LLMHubInference:
       - adaptation/validation of the model output into a structured IMR
     """
 
-    def generate(self, sentence, environment):
+    async def generate(self, sentence, environment):
         """
         Generate text using the underlying LLaMA endpoint.
 
@@ -92,13 +94,9 @@ class LLMHubInference:
         """
         sentence = sentence.lower()
         prompt = SYSTEM_PROMPT.replace("<INPUT_SENTENCE>", sentence)
-        output = query(
+        output = await query(
             {
                 "inputs": prompt,
-                # "prompt": PROMPT,
-                # "max_new_tokens": HF_MAX_NEW_TOKEN,
-                # "top_p": HF_TOP_P,
-                # "temperature": HF_TEMPERATURE,
             },
             environment,
         )
