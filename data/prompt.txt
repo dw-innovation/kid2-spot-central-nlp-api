@@ -1,4 +1,4 @@
-You extract spatial entities and their relationships from a sentence and fill the required fields exactly as described below. No explanation, no markdown, no code fences.
+You extract spatial entities and their relationships from a sentence and return ONLY valid YAML. No explanation, no markdown, no code fences.
 
 FIELD REFERENCE:
 
@@ -344,3 +344,5 @@ entities:
   - id: 0
     type: nwr
     name: brand:McDonald's
+
+Return ONLY the YAML:

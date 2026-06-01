@@ -1,13 +1,12 @@
 import os
 from dataclasses import dataclass
 
-import requests
 from adopt_generation import adopt_generation
 from dotenv import load_dotenv
-from imr_schema import IMROutput
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from loguru import logger
+from pydantic import ValidationError
 from yaml_parser import validate_and_fix_yaml
 
 logger.add(f"{__name__}.log", rotation="500 MB")
@@ -18,11 +17,9 @@ llm = ChatOpenAI(
     model=os.getenv("LLMHUB_MODEL"),
     base_url=os.getenv("LLMHUB_ENDPOINT"),
     api_key=os.getenv("LLMHUB_KEY"),
-    timeout=120,  # seconds — tune to your model's typical latency
-    max_retries=2,
+    timeout=240,
+    max_tokens=10000,
 )
-
-structured_llm = llm.with_structured_output(IMROutput)
 
 PROMPT_FILE = os.environ.get("PROMPT_FILE", "prompt.txt")
 
@@ -38,34 +35,28 @@ class LLMHubResponse:
     status_code: int = 200
 
 
-async def query(payload, environment):
+async def query(sentence: str, environment: str) -> LLMHubResponse:
     """
-    Send a POST request to the configured Hugging Face LLaMA inference endpoint.
+    Invoke the structured LLM to extract an IMR from the given sentence.
 
     Args:
-        payload (dict): JSON-serializable body for the inference request. Expected
-            keys include:
-              - "inputs" (str): The input text.
-              - "prompt" (str): The system or few-shot prompt to prepend.
-              - "max_new_tokens" (int/str): Max tokens to generate.
-              - "top_p" (float/str): Nucleus sampling parameter.
-              - "temperature" (float/str): Sampling temperature.
+        sentence (str): The user sentence to process.
         environment (str): Execution environment indicator (e.g., "dev", "prod").
-            Currently not used in this function, but accepted for interface parity
-            and potential routing/telemetry.
 
     Returns:
-        LLMHubResponse: Wrapper with generated content and HTTP status code.
+        LLMHubResponse: Wrapper with an IMROutput on success (200)
+            or an error string on failure (400).
     """
     try:
-        sentence = payload["inputs"]
         messages = [
             SystemMessage(content=SYSTEM_PROMPT),
-            HumanMessage(content=f"SENTENCE: {sentence}"),
+            HumanMessage(content=f"SENTENCE: {sentence}\n\nOUTPUT:"),
         ]
-        response = await structured_llm.ainvoke(messages)
-        return LLMHubResponse(content=response, status_code=200)
+        response = await llm.ainvoke(messages)
+        return LLMHubResponse(content=response.content, status_code=200)
+
     except Exception as e:
+        logger.exception("LLM query failed")
         return LLMHubResponse(content=str(e), status_code=400)
 
 
@@ -75,90 +66,58 @@ class LLMHubInference:
 
     Provides:
       - request construction and dispatch
-      - extraction of raw generated text
-      - adaptation/validation of the model output into a structured IMR
+      - extraction of the structured model output
+      - adaptation into the final IMR graph shape
     """
 
-    async def generate(self, sentence, environment):
+    async def generate(self, sentence: str, environment: str) -> LLMHubResponse:
         """
-        Generate text using the underlying LLaMA endpoint.
+        Generate a structured IMR using the LLM endpoint.
 
         Args:
-            sentence (str): Input sentence to process. Will be lowercased before
-                being sent.
+            sentence (str): Input sentence to process.
             environment (str): Execution environment indicator (e.g., "dev", "prod").
-                Passed through to maintain a consistent signature; currently unused.
 
         Returns:
-            requests.Response: The HTTP response returned by the inference service.
+            LLMHubResponse: Wrapper with IMROutput on success or error string on failure.
         """
-        sentence = sentence.lower()
-        prompt = SYSTEM_PROMPT.replace("<INPUT_SENTENCE>", sentence)
-        output = await query(
-            {
-                "inputs": prompt,
-            },
-            environment,
-        )
-        return output
+        return await query(sentence.lower(), environment)
 
-    def get_raw_output(self, response):
+    def get_raw_output(self, response: LLMHubResponse) -> str:
         """
-        Extract the generated text from the inference response.
+        Extract the IMROutput from the response wrapper.
 
         Args:
-            response (requests.Response): Response object returned by `generate`
-                or `query`. Expected JSON shape is a list whose first element
-                contains the key 'generated_text'.
+            response (LLMHubResponse): Response wrapper returned by `generate`.
 
         Returns:
-            str: The generated text string.
-
-        Raises:
-            KeyError/IndexError/ValueError: If the response JSON does not match
-            the expected structure.
+            IMROutput: The structured output from the LLM.
         """
-        return response.content
+        return response
 
-    def adopt(self, raw_response):
+    def adopt(self, raw_response: object) -> dict:
         """
-        Validate, fix, and adapt raw model output into the final IMR structure.
-
-        Pipeline:
-          1) `validate_and_fix_yaml` to ensure well-formed YAML/structure.
-          2) `adopt_generation` to convert the validated data into the target IMR.
+        Convert the structured IMROutput into the final IMR graph shape.
 
         Args:
-            raw_response (str): Raw generated text to be parsed and adapted.
+            raw_response (IMROutput): Validated Pydantic model from the LLM.
 
         Returns:
-            dict: The adopted/normalized IMR object ready for persistence or return.
-
-        Raises:
-            Exception: If validation or adoption fails downstream.
+            dict: The adopted result with 'imr' and 'display' keys.
         """
-        parsed_dict = raw_response.model_dump(exclude_none=True)
-        result = adopt_generation(parsed_dict)
+        result = validate_and_fix_yaml(raw_response.content)
+        result = adopt_generation(result)
         return result
 
 
 if __name__ == "__main__":
-    """
-    Manual test harness: performs a single query against the LLaMA endpoint
-    and prints the raw `requests.Response`. Useful for connectivity checks.
+    import asyncio
 
-    Notes:
-        - Uses the globally loaded PROMPT and sampling parameters.
-        - Assumes HF_* environment variables are correctly set.
-    """
-    output = query(
-        {
-            "inputs": 'find all bars that are called "trink" that are close to a kiosk in bonn',
-            # # "prompt": PROMPT,
-            # "max_new_tokens": HF_MAX_NEW_TOKEN,
-            # "top_p": HF_TOP_P,
-            # "temperature": HF_TEMPERATURE,
-        }
-    )
+    async def main():
+        output = await query(
+            'find all bars that are called "trink" that are close to a kiosk in bonn',
+            environment="dev",
+        )
+        print(output)
 
-    print(output)
+    asyncio.run(main())
