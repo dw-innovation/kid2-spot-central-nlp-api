@@ -347,4 +347,4 @@ entities:
     type: nwr
     name: brand:McDonald's
 
-Now extract from the SENTENCE above. Return ONLY the YAML:
+Now extract from the SENTENCE above:

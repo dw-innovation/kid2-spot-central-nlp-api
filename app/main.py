@@ -162,6 +162,7 @@ def transform_sentence_to_imr(body: RequestBody):
         # collection.insert_one(model_result)
 
     elif response.status_code == status.HTTP_400_BAD_REQUEST:
+        print(response)
         error_response = response.json()
         error_message = error_response.get("message", "")
 

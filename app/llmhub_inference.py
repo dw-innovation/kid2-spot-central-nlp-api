@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import requests
 from adopt_generation import adopt_generation
 from dotenv import load_dotenv
+from imr_schema import IMROutput
 from langchain_openai import ChatOpenAI
 from loguru import logger
 from yaml_parser import validate_and_fix_yaml
@@ -18,6 +19,8 @@ llm = ChatOpenAI(
     api_key=os.getenv("LLMHUB_KEY"),
 )
 
+structured_llm = llm.with_structured_output(IMROutput)
+
 PROMPT_FILE = os.environ.get("PROMPT_FILE", "prompt.txt")
 
 with open(PROMPT_FILE, "r") as f:
@@ -28,7 +31,7 @@ with open(PROMPT_FILE, "r") as f:
 class LLMHubResponse:
     """Minimal response wrapper returned by LLMHubInference.generate()."""
 
-    content: str
+    content: object
     status_code: int = 200
 
 
@@ -52,8 +55,8 @@ def query(payload, environment):
         LLMHubResponse: Wrapper with generated content and HTTP status code.
     """
     try:
-        response = llm.invoke(payload["inputs"])
-        return LLMHubResponse(content=response.content, status_code=200)
+        response = structured_llm.invoke(payload["inputs"])
+        return LLMHubResponse(content=response, status_code=200)
     except Exception as e:
         return LLMHubResponse(content=str(e), status_code=400)
 
@@ -130,8 +133,8 @@ class LLMHubInference:
         Raises:
             Exception: If validation or adoption fails downstream.
         """
-        result = validate_and_fix_yaml(raw_response)
-        result = adopt_generation(result)
+        parsed_dict = raw_response.model_dump(exclude_none=True)
+        result = adopt_generation(parsed_dict)
         return result
 
 
