@@ -146,7 +146,7 @@ async def transform_sentence_to_imr(body: RequestBody):
     response = await MODEL_INFERENCES[model].generate(sentence, environment)
     if response.status_code == status.HTTP_200_OK:
         raw_output = MODEL_INFERENCES[model].get_raw_output(response)
-        adopted_result = MODEL_INFERENCES[model].adopt(raw_output)
+        adopted_result = await MODEL_INFERENCES[model].adopt(raw_output)
 
         model_result = {
             "timestamp": f"{datetime.now():%Y-%m-%d %H:%M:%S%z}",

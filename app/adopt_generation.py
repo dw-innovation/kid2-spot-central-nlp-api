@@ -2,8 +2,8 @@ import os
 import sys
 from collections.abc import Iterable
 
+import httpx
 import inflect
-import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -73,7 +73,7 @@ class AdoptFuncError(Exception):
         super().__init__(self.message)
 
 
-def search_osm_tag(entity):
+async def search_osm_tag(entity):
     """
     Query the OSM tag search service for an entity name and return IMR hints.
 
@@ -82,19 +82,15 @@ def search_osm_tag(entity):
 
     Returns:
         dict | list: Parsed JSON response from the search endpoint.
-
-    Notes:
-        - Uses the `SEARCH_ENDPOINT` URL from environment variables.
-        - SSL verification is disabled (verify=False).
     """
-    PARAMS = {"word": entity, "limit": 1, "detail": False}
-    r = requests.get(
-        url=SEARCH_ENDPOINT, params=PARAMS, verify=False
-    )  # set verify to False to ignore SSL certificate
-    return r.json()
+    params = {"word": entity, "limit": 1, "detail": False}
+    async with httpx.AsyncClient(verify=False) as client:
+        r = await client.get(url=SEARCH_ENDPOINT, params=params)
+        r.raise_for_status()
+        return r.json()
 
 
-def fetch_color_bundles(color: str):
+async def fetch_color_bundles(color: str):
     """
     Fetch a color bundle (synonyms/hex variants) for a given color name.
 
@@ -103,19 +99,15 @@ def fetch_color_bundles(color: str):
 
     Returns:
         dict: Parsed JSON containing `color_values` and related metadata.
-
-    Notes:
-        - Uses `COLOR_BUNDLE_SEARCH` from environment variables.
-        - SSL verification is disabled (verify=False).
     """
-    PARAMS = {"color": color, "limit": 1, "detail": False}
-    r = requests.get(
-        url=COLOR_BUNDLE_SEARCH, params=PARAMS, verify=False
-    )  # set verify to False to ignore SSL certificate
-    return r.json()
+    params = {"color": color, "limit": 1, "detail": False}
+    async with httpx.AsyncClient(verify=False) as client:
+        r = await client.get(url=COLOR_BUNDLE_SEARCH, params=params)
+        r.raise_for_status()
+        return r.json()
 
 
-def build_filters(node):
+async def build_filters(node):
     """
     Build IMR-compatible filter blocks for a single parsed node.
 
@@ -147,7 +139,7 @@ def build_filters(node):
         ValueError: When the property IMR block does not contain 'or' or 'and'.
     """
     node_name = node["name"]
-    osm_results = search_osm_tag(node_name)
+    osm_results = await search_osm_tag(node_name)
     if len(osm_results) == 0:
         return None
     ent_filters = osm_results[0]["imr"]
@@ -183,7 +175,7 @@ def build_filters(node):
 
         for node_flt in node["properties"]:
             ent_property = node_flt["name"]
-            ent_property_imr = search_osm_tag(ent_property)
+            ent_property_imr = await search_osm_tag(ent_property)
             imr_block = ent_property_imr[0]["imr"][0]
             if "or" in imr_block:
                 ent_property_imr = imr_block["or"]
@@ -217,7 +209,7 @@ def build_filters(node):
                         "colour" in ent_property_imr[0]["key"]
                         or "color" in ent_property_imr[0]["key"]
                     ):
-                        color_values = fetch_color_bundles(new_ent_value)[
+                        color_values = (await fetch_color_bundles(new_ent_value))[
                             "color_values"
                         ]
                         for color_value in color_values:
@@ -260,7 +252,7 @@ def build_filters(node):
     return processed_filters
 
 
-def adopt_generation(parsed_result):
+async def adopt_generation(parsed_result):
     """
     Convert a parsed IMR-like structure into the final graph shape used downstream.
 
@@ -322,7 +314,7 @@ def adopt_generation(parsed_result):
             }
             display.append(display_item)
 
-            node_filters = build_filters(node)
+            node_filters = await build_filters(node)
 
             if node_filters:
                 if "minpoints" in node:

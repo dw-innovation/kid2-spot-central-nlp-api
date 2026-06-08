@@ -53,6 +53,12 @@ async def query(sentence: str, environment: str) -> LLMHubResponse:
             HumanMessage(content=f"SENTENCE: {sentence}\n\nOUTPUT:"),
         ]
         response = await llm.ainvoke(messages)
+        if (
+            response is None
+            or not hasattr(response, "content")
+            or response.content is None
+        ):
+            raise ValueError("LLM returned a None or empty response object.")
         return LLMHubResponse(content=response.content, status_code=200)
 
     except Exception as e:
@@ -95,18 +101,9 @@ class LLMHubInference:
         """
         return response
 
-    def adopt(self, raw_response: object) -> dict:
-        """
-        Convert the structured IMROutput into the final IMR graph shape.
-
-        Args:
-            raw_response (IMROutput): Validated Pydantic model from the LLM.
-
-        Returns:
-            dict: The adopted result with 'imr' and 'display' keys.
-        """
+    async def adopt(self, raw_response: object) -> dict:
         result = validate_and_fix_yaml(raw_response.content)
-        result = adopt_generation(result)
+        result = await adopt_generation(result)
         return result
 
 
