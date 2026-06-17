@@ -1,5 +1,7 @@
 You extract spatial entities and their relationships from a sentence and return ONLY valid YAML. No explanation, no markdown, no code fences.
 
+SENTENCE: <INPUT_SENTENCE>
+
 FIELD REFERENCE:
 
 area.type: "area" if a city, town, region, or country is mentioned, "bbox" otherwise.
@@ -10,19 +12,23 @@ Each entity has:
 - type: "nwr" for a single entity OR unquantified plurals ("all restaurants", "show me cafes", "find pharmacies"). Use "cluster" ONLY when a specific numeric count is given (e.g. "3 benches", "5 trees", "eight pubs") or a vague quantifier implying a group ("a few shops", "several cafes"). Words like "all", "every", or bare plurals do NOT make a cluster.
 - name: the GENERIC entity type, never a brand. Use "coffee shop" not "Starbucks", "restaurant" not "McDonald's", "supermarket" not "Aldi".
   KEEP ALL qualifying words that describe the entity type in the name. The name should match the user's description as closely as possible. Examples of CORRECT names:
-    "theme park drop tower" (NOT "drop tower"), "street bench" (NOT "bench"), "municipal recycling center" (NOT "recycling center"), "canal kilometer post" (NOT "kilometer post"), "outside handball court" (NOT "handball court"), "wheelchair parking access zone", "parking lot cctv", "main entrance", "frozen yoghurt shop" (NOT "shop"), "japanese teahouse" (NOT "teahouse"), "pakistani eatery" (NOT "eatery"), "quaker friends meeting house" (NOT "meeting house"), "italian restaurant" (NOT "restaurant" + cuisine=italian), "american diner" (NOT "diner" + cuisine=american), "solar panels on roof" (NOT "solar panel" + "roof"), "pathology doctor" (NOT "doctor"), "family services center", "tourist shop" (NOT "shop"), "public toilet" (NOT "toilet"), "outdoor seating" (NOT "seating area").
+    "theme park drop tower" (NOT "drop tower"), "street bench" (NOT "bench"), "municipal recycling center" (NOT "recycling center"), "canal kilometer post" (NOT "kilometer post"), "outside handball court" (NOT "handball court"), "wheelchair parking access zone", "parking lot cctv", "main entrance", "frozen yoghurt shop" (NOT "shop"), "quaker friends meeting house" (NOT "meeting house"), "solar panels on roof" (NOT "solar panel" + "roof"), "pathology doctor" (NOT "doctor"), "family services center", "tourist shop" (NOT "shop"), "public toilet" (NOT "toilet"), "outdoor seating" (NOT "seating area").
   The ONLY things that go into properties instead of the name are:
     - brand/brand name values (e.g. "Cerska", "Wall", "MA")
     - named/called values using "name" property (e.g. called "Fazenda Tamara" → name: ~, value: Fazenda Tamara)
     - street name values (e.g. "on Quellweg" → street name: ~, value: Quellweg)
     - measurable numeric properties (height, floors, house number, length, lanes)
-    - boolean features: "outdoor seating", "wi-fi zone", "outside seating area", "vegetarian-only", "al fresco", "lockable"
+    - boolean features: "outdoor seating", "wi-fi zone", "outside seating area", "vegetarian-only", "vegan", "halal", "al fresco", "lockable"
     - denomination/religion (e.g. "orthodox", "shinto")
-  Cuisine and nationality that describe the entity TYPE stay in the name (e.g. "italian restaurant", "japanese teahouse", "irish bar").
-  Material and colour ALWAYS go into properties, NOT the name:
+    - cuisine/nationality for food establishments: extract as a "cuisine" property with operator "=". The entity name should be the generic type only.
+      "italian restaurant" → name: "restaurant", property: cuisine = italian
+      "ethiopian coffee bar" → name: "coffee bar", property: cuisine = ethiopian
+      "seafood restaurant" → name: "restaurant", property: cuisine = seafood
+      "greek taverna" → name: "taverna", property: cuisine = greek
+  Material and color ALWAYS go into properties, NOT the name:
     "cement transit shelter" → name: "transit shelter", property: building material = cement
     "metal wall painting" → name: "wall painting", property: surface material = metal
-    "green common" → name: "common", property: colour = green
+    "green common" → name: "common", property: color = green
     "wooden shrine" → name: "shrine", property: building material = wood
     "pale-yellow wall" → name: "wall", property: color = pale yellow
   EXCEPTION: When the query is ONLY about a brand with no generic type stated, use "brand:<BrandName>" as the name (e.g. "brand:McDonald's", "brand:H&M", "brand:wendy's", "brand:711"). If the user says "a McDonald's" without specifying "restaurant", use brand: prefix.
@@ -32,14 +38,14 @@ Each entity has:
     - name: the property key. Use these EXACT keys (do not invent alternatives):
       "brand", "brand name", "name", "street name", "house number", "building number",
       "building material", "surface material", "fabrication material", "roof material",
-      "colour", "roof colour", "(wall) color",
+      "color", "roof color",
       "height", "length", "floors", "levels", "lanes", "lanes in each direction",
       "outdoor seating", "outside seating area", "wi-fi zone", "wi-fi hotspot",
       "religion", "denomination",
       "cuisine", "al fresco", "vegetarian-only", "vegan", "halal",
       "lockable", "accessible parking space", "toll road", "carpool lane", "elevator",
       "in a cutting", "through a cutting"
-      Use "colour" for entity/wall colours, "roof colour" for roof colours. Use "surface material" or "fabrication material" for what something is made of (not "building material" unless it's a building). Always use "~" operator (never "=") for "brand", "name", "house number", and "height".
+      Use "color" for entity/wall colors, "roof color" for roof colors. Use "surface material" or "fabrication material" for what something is made of (not "building material" unless it's a building). Always use "~" operator (never "=") for "brand", "brand name", "name", "house number", and "height". For concrete categorical values (materials, colors, religions, denominations, cuisine), always use "=" operator (never "~").
     - operator: (optional) "=" for exact match, "~" for partial/fuzzy match, ">" for greater than, "<" for less than. Omit for boolean properties.
     - value: (optional) the property value. Omit for boolean properties (e.g. "outdoor seating", "wi-fi zone", "outside seating area", "vegetarian-only").
   IMPORTANT: Brand names always go in properties, never in the "name" field (unless using the brand: prefix exception above).
@@ -70,7 +76,10 @@ IMPORTANT rules for relations:
   Example: "water taxi and two war memorials, each 0.25 mi apart" → cluster(minPoints=2, maxDistance=0.25mi) AND relation(water taxi→memorials, value=0.25mi).
   NEVER omit the relation just because the cluster already has a maxDistance.
 - Property values should be lowercase (e.g. "brethren" not "Brethren", "ethiopian" not "Ethiopian"). Exception: proper nouns in name/brand values keep their original casing.
-- Use "brand name" for named trails, shops, or places (e.g. ski trail "Tintas Renner" → property name="brand name"). Use "name" only when the user explicitly says "named X" or "called X". Use "brand" for brand chains (e.g. "Cerska", "Esso").
+- "brand" vs "brand name" vs "name" — these are three distinct property keys:
+    - "brand" (operator ~): well-known commercial chain brands (e.g. "Starbucks", "Esso", "Aldi", "McDonald's", "H&M")
+    - "brand name" (operator ~): the specific name of an establishment, trail, or place that is NOT a well-known chain (e.g. ski trail "Tintas Renner", shop "Master Farma", restaurant "Fazenda Grill")
+    - "name" (operator ~): ONLY when the user explicitly says "named X" or "called X" (e.g. "a park called Central Park" → name ~ Central Park)
 - Assign each property to the entity it describes. Read the sentence carefully: "a bistro with a brand name containing 'atouille'" → the brand goes on the bistro, NOT on another entity. "a hospital whose name begins with Ce" → the name property goes on the hospital. Never swap properties between entities.
 - Format distance values without thousands separators: use "1100 m" not "1,100 m".
 - Sequential distances: "A is 33ft from B. C is 51yd away" → the second distance refers to the most recently mentioned entity (B→C), not the first.
@@ -345,4 +354,4 @@ entities:
     type: nwr
     name: brand:McDonald's
 
-Return ONLY the YAML:
+Now extract from the SENTENCE above. Return ONLY the YAML:
