@@ -14,8 +14,6 @@ COLOR_BUNDLE_SEARCH = os.getenv("COLOR_BUNDLE_SEARCH")
 PLURAL_ENGINE = inflect.engine()
 DEFAULT_DISTANCE = os.getenv("DEFAULT_DISTANCE")
 
-load_dotenv()
-
 def flatten(xs):
     """
     Recursively flatten a nested iterable into a flat generator.
@@ -300,26 +298,19 @@ def adopt_generation(parsed_result):
             node_filters = build_filters(node)
 
             if node_filters:
+                node_entry = {
+                    'id': node['id'],
+                    'type': 'nwr',
+                    'filters': node_filters,
+                    'name': node['name'],
+                    'display_name': display_name,
+                    'display_props': node['properties']
+                }
                 if 'minpoints' in node:
-                    processed_nodes.append({
-                        'id': node['id'],
-                        'type': 'cluster',
-                        'maxDistance': node['maxdistance'],
-                        'minPoints': node['minpoints'],
-                        'filters': node_filters,
-                        'name': node['name'],
-                        'display_name': display_name
-
-                    })
-                else:
-                    processed_nodes.append({
-                        'id': node['id'],
-                        'type': 'nwr',
-                        'filters': node_filters,
-                        'name': node['name'],
-                        'display_name': display_name
-
-                    })
+                    node_entry['type'] = 'cluster'
+                    node_entry['maxDistance'] = node['maxdistance']
+                    node_entry['minPoints'] = node['minpoints']
+                processed_nodes.append(node_entry)
 
         parsed_result['nodes'] = processed_nodes
 
@@ -333,6 +324,4 @@ def adopt_generation(parsed_result):
     except (ValueError, IndexError, KeyError, TypeError) as e:
         raise AdoptFuncError(f"Error in Adopt Generation: {e}")
 
-    all_result = {'imr': parsed_result,
-                  'display': display}
-    return all_result
+    return parsed_result
