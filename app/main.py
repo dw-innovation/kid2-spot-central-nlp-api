@@ -1,4 +1,4 @@
-import json
+import asyncio
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from llama_inference import LlamaInference
 from llmhub_inference import LLMHubInference
+from loguru import logger
 from pydantic import BaseModel
 from pymongo import MongoClient
 from sagemaker_inference import SageMakerInference
@@ -111,9 +112,11 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 MODEL_INFERENCES = {
     "llama": LlamaInference(),
     "t5": T5Inference(),
-    "sagemaker": SageMakerInference(),
+    # "sagemaker": SageMakerInference(),
     "llmhub": LLMHubInference(),
 }
+
+MAX_RETRIES = int(os.environ.get("MAX_RETRIES", "10"))
 
 
 @app.post(
@@ -126,7 +129,8 @@ async def transform_sentence_to_imr(body: RequestBody):
     Transforms an input sentence into an intermediate representation (IMR)
     using the specified model ('llama' or 't5').
 
-    Stores results or errors in the database for traceability.
+    Retries up to MAX_ENDPOINT_RETRIES times until a 200 response is received,
+    using exponential backoff between attempts.
 
     Args:
         body (RequestBody): Request payload containing input sentence,
@@ -136,61 +140,52 @@ async def transform_sentence_to_imr(body: RequestBody):
         dict: A dictionary with the inference result and metadata.
 
     Raises:
-        HTTPException: If the model returns an error or an unknown status.
+        HTTPException: If all retries are exhausted without a 200 response.
     """
     sentence = body.sentence.lower()
     environment = body.environment
     model = body.model
     username = body.username
 
-    response = await MODEL_INFERENCES[model].generate(sentence, environment)
-    if response.status_code == status.HTTP_200_OK:
-        raw_output = MODEL_INFERENCES[model].get_raw_output(response)
-        adopted_result = await MODEL_INFERENCES[model].adopt(raw_output)
+    last_error: Exception | None = None
 
-        model_result = {
-            "timestamp": f"{datetime.now():%Y-%m-%d %H:%M:%S%z}",
-            "inputSentence": sentence,
-            "imr": adopted_result["imr"],
-            "display": adopted_result["display"],
-            "rawOutput": raw_output,
-            "modelVersion": model,
-            "status": "success",
-            "username": username,
-        }
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = await MODEL_INFERENCES[model].generate(sentence, environment)
 
-        # collection.insert_one(model_result)
+            if response.status_code == status.HTTP_200_OK:
+                raw_output = MODEL_INFERENCES[model].get_raw_output(response)
+                adopted_result = await MODEL_INFERENCES[model].adopt(raw_output)
 
-    elif response.status_code == status.HTTP_400_BAD_REQUEST:
-        print(response)
-        error_response = response.json()
-        error_message = error_response.get("message", "")
+                logger.info(f"Endpoint attempt {attempt} succeeded.")
+                return {
+                    "timestamp": f"{datetime.now():%Y-%m-%d %H:%M:%S%z}",
+                    "inputSentence": sentence,
+                    "imr": adopted_result["imr"],
+                    "display": adopted_result["display"],
+                    "rawOutput": raw_output,
+                    "modelVersion": model,
+                    "status": "success",
+                    "username": username,
+                }
 
-        cleaned_message = error_message.replace("'", '"').replace("None", "null")
-        cleaned_message = cleaned_message.replace("\\n", "\\\\n")
+            raise Exception(
+                f"Model returned status {response.status_code} on attempt {attempt}."
+            )
 
-        error_details = json.loads(cleaned_message)
-        # collection.insert_one(
-        #     {
-        #         "timestamp": error_details.get("timestamp"),
-        #         "inputSentence": error_details.get("inputSentence"),
-        #         "imr": error_details.get("imr"),
-        #         "display": error_details.get("display"),
-        #         "rawOutput": error_details.get("rawOutput"),
-        #         "status": "error",
-        #         "error": error_details.get("error"),
-        #         "modelVersion": error_details.get("modelVersion"),
-        #         "prompt": error_details.get("prompt"),
-        #         "username": username,
-        #     }
-        # )
+        except Exception as e:
+            last_error = e
+            wait = 2 ** (attempt - 1)  # 1s, 2s, 4s, 8s, 16s
+            logger.warning(
+                f"Endpoint attempt {attempt}/{MAX_RETRIES} failed: {e}. Retrying in {wait}s..."
+            )
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(wait)
 
-        # raise HTTPException(
-        #     status_code=status.HTTP_400_BAD_REQUEST, detail=error_response
-        # )
-    else:
-        raise HTTPException(
-            status_code=response.status_code, detail="An unexpected error occurred."
-        )
-
-    return model_result
+    logger.error(
+        f"Endpoint failed after {MAX_RETRIES} attempts. Last error: {last_error}"
+    )
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail=f"Inference failed after {MAX_RETRIES} attempts. Last error: {last_error}",
+    )

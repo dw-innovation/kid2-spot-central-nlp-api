@@ -25,35 +25,36 @@ test_sentences = [
     "find me a house with a green door, located with a white picket fence and the number 17 on it",
 ]
 
-for test_sentence in test_sentences:
-    print("==sentence==")
-    print(test_sentence)
-    response = client.post(
-        "/transform-sentence-to-imr",
-        headers={"X-Token": "coneofsilence"},
-        json={
-            "sentence": test_sentence,
-            "model": model,
-            "username": "kid-test",
-            "environment": "production",
-        },
-    )
-    print(response)
-    # response = client.post("/transform-sentence-to-imr", headers={"X-Token": "coneofsilence"},
-    #                        json={"sentence": test_sentence,
-    #                              "model": model,
-    #                              "username": "kid-test",
-    #                              "environment": "development"})
-    # print(response)
-    print("==response==")
-    print(response.json())
+for i in range(10):
+    for test_sentence in test_sentences:
+        print("==sentence==")
+        print(test_sentence)
+        response = client.post(
+            "/transform-sentence-to-imr",
+            headers={"X-Token": "coneofsilence"},
+            json={
+                "sentence": test_sentence,
+                "model": model,
+                "username": "kid-test",
+                "environment": "production",
+            },
+        )
+        print(response)
+        # response = client.post("/transform-sentence-to-imr", headers={"X-Token": "coneofsilence"},
+        #                        json={"sentence": test_sentence,
+        #                              "model": model,
+        #                              "username": "kid-test",
+        #                              "environment": "development"})
+        # print(response)
+        print("==response==")
+        print(response.json())
 
-    assert response.status_code == 200
+        assert response.status_code == 200
 
-    # print("==sentence==")
-    # print(test_sentence)
-    #
-    # print("==response==")
-    # print(response.json())
-    #
-    # assert response.status_code==200
+        # print("==sentence==")
+        # print(test_sentence)
+        #
+        # print("==response==")
+        # print(response.json())
+        #
+        # assert response.status_code==200

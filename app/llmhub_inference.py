@@ -26,8 +26,6 @@ PROMPT_FILE = os.environ.get("PROMPT_FILE", "prompt.txt")
 with open(PROMPT_FILE, "r") as f:
     SYSTEM_PROMPT = f.read()
 
-MAX_RETRIES = int(os.environ.get("MAX_RETRIES", "5"))
-
 
 @dataclass
 class LLMHubResponse:
@@ -39,12 +37,6 @@ class LLMHubResponse:
 
 async def query(sentence: str, environment: str) -> LLMHubResponse:
     """
-    Invoke the LLM up to MAX_RETRIES times.
-
-    Retries when the response is None, missing .content, or content is empty.
-    Uses exponential backoff (1s, 2s, 4s, ...) between attempts.
-    Returns a 400 LLMHubResponse only after all retries are exhausted.
-
     Args:
         sentence (str): The user sentence to process.
         environment (str): Execution environment indicator (e.g., "dev", "prod").
@@ -58,37 +50,8 @@ async def query(sentence: str, environment: str) -> LLMHubResponse:
         HumanMessage(content=f"SENTENCE: {sentence}\n\nOUTPUT:"),
     ]
 
-    last_error: Exception | None = None
-
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            response = await llm.ainvoke(messages)
-
-            if (
-                response is None
-                or not hasattr(response, "content")
-                or not response.content
-            ):
-                raise ValueError(
-                    f"LLM returned a None or empty response (attempt {attempt})."
-                )
-
-            logger.info(f"LLM query succeeded on attempt {attempt}.")
-            return LLMHubResponse(content=response.content, status_code=200)
-
-        except Exception as e:
-            last_error = e
-            wait = 2 ** (attempt - 1)  # 1s, 2s, 4s, 8s, 16s
-            logger.warning(
-                f"LLM query failed on attempt {attempt}/{MAX_RETRIES}: {e}. Retrying in {wait}s..."
-            )
-            if attempt < MAX_RETRIES:
-                await asyncio.sleep(wait)
-
-    logger.error(
-        f"LLM query failed after {MAX_RETRIES} attempts. Last error: {last_error}"
-    )
-    return LLMHubResponse(content=str(last_error), status_code=400)
+    response = await llm.ainvoke(messages)
+    return LLMHubResponse(content=response.content, status_code=200)
 
 
 class LLMHubInference:
