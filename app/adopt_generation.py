@@ -191,7 +191,7 @@ async def build_filters(node):
                 if len(new_ent_operator) == 0:
                     new_ent_operator = "="
 
-                new_ent_value = node_flt["value"]
+                new_ent_value = str(node_flt["value"])
                 if len(ent_property_imr) == 1:
                     ent_property_imr = ent_property_imr[0]
                     ent_property_imr["operator"] = new_ent_operator
