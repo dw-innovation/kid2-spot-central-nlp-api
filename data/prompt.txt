@@ -35,17 +35,20 @@ Each entity has:
 - minPoints: (cluster only) minimum count of entities
 - maxDistance: (cluster only) max spread between members, as a string with units (e.g. "50 m", "1.2 km"). If the sentence gives ANY distance/radius describing the cluster's spread or grouping (e.g. "3 eateries all within 500 meters", "2 ATMs 350m from each other", "7 pubs less than 1500 yards apart"), use that stated distance. Only default to the cluster's distance to another specified entity when no distance is mentioned or implied for the cluster spacing.
 - properties: (optional, omit if none) list of filters. Applies to BOTH "nwr" AND "cluster" entities. Each property has:
-    - name: the property key. Use these EXACT keys (do not invent alternatives):
-      "brand", "brand name", "name", "street name", "house number", "building number",
-      "building material", "surface material", "fabrication material", "roof material",
-      "color", "roof color",
-      "height", "length", "floors", "levels", "lanes", "lanes in each direction",
-      "outdoor seating", "outside seating area", "wi-fi zone", "wi-fi hotspot",
-      "religion", "denomination",
-      "cuisine", "al fresco", "vegetarian-only", "vegan", "halal",
-      "lockable", "accessible parking space", "toll road", "carpool lane", "elevator",
-      "in a cutting", "through a cutting"
-      Use "color" for entity/wall colors, "roof color" for roof colors. Use "surface material" or "fabrication material" for what something is made of (not "building material" unless it's a building). Always use "~" operator (never "=") for "brand", "brand name", "name", "house number", and "height". For concrete categorical values (materials, colors, religions, denominations, cuisine), always use "=" operator (never "~").
+    - name: the property key. Prefer these standard keys when they fit:
+      Identity: "brand", "brand name", "name", "street name", "house number", "building number"
+      Materials: "building material", "surface material", "fabrication material", "roof material"
+      Appearance: "color", "roof color"
+      Dimensions: "height", "length", "width", "floors", "levels", "lanes", "lanes in each direction", "capacity", "seats"
+      Amenities: "outdoor seating", "outside seating area", "wi-fi zone", "wi-fi hotspot", "drive-through", "takeaway", "delivery", "parking", "bike parking", "covered", "lit", "heated", "air conditioning"
+      Accessibility: "wheelchair accessible", "accessible parking space", "elevator", "tactile paving"
+      Religion: "religion", "denomination"
+      Food/Drink: "cuisine", "al fresco", "vegetarian-only", "vegan", "halal", "kosher", "organic", "gluten-free"
+      Road: "toll road", "carpool lane", "speed limit", "one-way", "paved", "unpaved"
+      Security: "lockable", "surveillance", "gated"
+      Other: "in a cutting", "through a cutting", "fee", "free", "24 hours", "seasonal", "smoking", "non-smoking", "dog-friendly", "family-friendly"
+      If none of the standard keys fit, create a short, descriptive lowercase key that captures the property (e.g. "power source", "water depth", "boat type"). Do NOT discard a property just because it is not in the list above.
+      Use "color" for entity/wall colors, "roof color" for roof colors. Use "surface material" or "fabrication material" for what something is made of (not "building material" unless it's a building). Always use "~" operator (never "=") for "brand", "brand name", "name", and "house number". For "height" and other numeric dimensions, use "~" for exact values, or ">", "<" for comparisons (e.g. "taller than 3m" → operator ">"). For concrete categorical values (materials, colors, religions, denominations, cuisine), always use "=" operator (never "~").
     - operator: (optional) "=" for exact match, "~" for partial/fuzzy match, ">" for greater than, "<" for less than. Omit for boolean properties.
     - value: (optional) the property value. Omit for boolean properties (e.g. "outdoor seating", "wi-fi zone", "outside seating area", "vegetarian-only").
   IMPORTANT: Brand names always go in properties, never in the "name" field (unless using the brand: prefix exception above).
