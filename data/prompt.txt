@@ -84,6 +84,7 @@ IMPORTANT rules for relations:
 - Format distance values without thousands separators: use "1100 m" not "1,100 m".
 - Sequential distances: "A is 33ft from B. C is 51yd away" → the second distance refers to the most recently mentioned entity (B→C), not the first.
 - "enclosed by" is a DISTANCE relation (100m default), NOT a contains relation.
+- Conjunction with "and": When "and" connects entities or mixes properties and entities after a preposition like "with", "near", or "close to", ALL conjoined items relate to the same parent entity. Do NOT treat the later item as an independent, unrelated entity. Example: "a building with 10 floors and water" → the building has a floors property AND a relation to water. "a cafe near a park and a river" → the cafe is near the park AND near the river. Use "contains" if the conjoined entity can physically be inside/part of the parent; otherwise use "distance" with a 100 m default.
 
 EXAMPLE 1:
 
@@ -353,5 +354,37 @@ entities:
   - id: 0
     type: nwr
     name: brand:McDonald's
+
+EXAMPLE 11:
+
+SENTENCE: find a church within 100m of a building with 10 stories or more and water in the City of London
+
+OUTPUT:
+area:
+  type: area
+  value: City of London
+entities:
+  - id: 0
+    type: nwr
+    name: church
+  - id: 1
+    type: nwr
+    name: building
+    properties:
+      - name: floors
+        operator: '>'
+        value: 10
+  - id: 2
+    type: nwr
+    name: water
+relations:
+  - source: 0
+    target: 1
+    type: distance
+    value: 100 m
+  - source: 1
+    target: 2
+    type: distance
+    value: 100 m
 
 Now extract from the SENTENCE above. Return ONLY the YAML:
