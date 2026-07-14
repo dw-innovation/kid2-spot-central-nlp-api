@@ -19,6 +19,7 @@ llm = ChatOpenAI(
     api_key=os.getenv("LLMHUB_KEY"),
     timeout=240,
     max_tokens=10000,
+    temperature=0,
 )
 
 PROMPT_FILE = os.environ.get("PROMPT_FILE", "prompt.txt")
