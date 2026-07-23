@@ -1,4 +1,4 @@
-import requests
+import httpx
 import os
 from dotenv import load_dotenv
 from loguru import logger
@@ -28,7 +28,7 @@ headers = {
 }
 
 
-def query(payload, environment):
+async def query(payload, environment):
     """
     Send a POST request to the configured Hugging Face LLaMA inference endpoint.
 
@@ -45,11 +45,12 @@ def query(payload, environment):
             and potential routing/telemetry.
 
     Returns:
-        requests.Response: The raw HTTP response from the inference endpoint.
+        httpx.Response: The raw HTTP response from the inference endpoint.
     """
     endpoint = HF_LLAMA_ENDPOINT
-    response = requests.post(endpoint, headers=headers, json=payload)
-    return response
+    async with httpx.AsyncClient(verify=False) as client:
+        response = await client.post(endpoint, headers=headers, json=payload)
+        return response
 
 class LlamaInference:
     """
@@ -60,7 +61,7 @@ class LlamaInference:
       - extraction of raw generated text
       - adaptation/validation of the model output into a structured IMR
     """
-    def generate(self, sentence, environment):
+    async def generate(self, sentence, environment):
         """
         Generate text using the underlying LLaMA endpoint.
 
@@ -71,9 +72,9 @@ class LlamaInference:
                 Passed through to maintain a consistent signature; currently unused.
 
         Returns:
-            requests.Response: The HTTP response returned by the inference service.
+            httpx.Response: The HTTP response returned by the inference service.
         """
-        output = query({
+        output = await query({
             "inputs": sentence.lower(),
             # "prompt": PROMPT,
             "max_new_tokens": HF_MAX_NEW_TOKEN,
@@ -87,7 +88,7 @@ class LlamaInference:
         Extract the generated text from the inference response.
 
         Args:
-            response (requests.Response): Response object returned by `generate`
+            response (httpx.Response): Response object returned by `generate`
                 or `query`. Expected JSON shape is a list whose first element
                 contains the key 'generated_text'.
 
@@ -101,7 +102,7 @@ class LlamaInference:
         sentence = response.json()[0]['generated_text']
         return sentence
 
-    def adopt(self, raw_response):
+    async def adopt(self, raw_response):
         """
         Validate, fix, and adapt raw model output into the final IMR structure.
 
@@ -121,7 +122,7 @@ class LlamaInference:
         print("===RAW RESPONSE===")
         print(raw_response)
         result = validate_and_fix_yaml(raw_response)
-        result = adopt_generation(result)
+        result = await adopt_generation(result)
         return result
 
 

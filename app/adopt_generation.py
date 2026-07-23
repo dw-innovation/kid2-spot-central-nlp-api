@@ -297,8 +297,11 @@ async def adopt_generation(parsed_result):
         processed_nodes = []
         for node in parsed_result["nodes"]:
             if "name" not in node:
-                print(f"{node} has not the required name field!")
-                continue
+                if "type" in node:
+                    node["name"] = node["type"]
+                else:
+                    print(f"{node} has not the required name field and no type to use as fallback!")
+                    continue
             if not PLURAL_ENGINE.singular_noun(node["name"]):
                 display_name = PLURAL_ENGINE.plural_noun(node["name"])
             else:

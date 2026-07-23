@@ -29,7 +29,7 @@ class SageMakerInference:
         )
         self.endpoint_name = os.getenv("AWS_ENDPOINT_NAME")
 
-    def generate(self, sentence, environment):
+    async def generate(self, sentence, environment):
         """
         Generate text using the underlying LLaMA endpoint.
 
@@ -40,7 +40,7 @@ class SageMakerInference:
                 Passed through to maintain a consistent signature; currently unused.
 
         Returns:
-            requests.Response: The HTTP response returned by the inference service.
+            JSONResponse: The HTTP response returned by the inference service.
         """
 
 
@@ -59,7 +59,6 @@ class SageMakerInference:
             content=body,
             status_code=_response["ResponseMetadata"]["HTTPStatusCode"]
         )
-        return response
 
     def get_raw_output(self, response):
         """
@@ -80,7 +79,7 @@ class SageMakerInference:
         sentence = json.loads(json.loads(response.body.decode("utf-8"))[0])[0]["generated_text"]
         return sentence
 
-    def adopt(self, raw_response):
+    async def adopt(self, raw_response):
         """
         Validate, fix, and adapt raw model output into the final IMR structure.
 
@@ -98,7 +97,7 @@ class SageMakerInference:
             Exception: If validation or adoption fails downstream.
         """
         result = validate_and_fix_yaml(raw_response)
-        result = adopt_generation(result)
+        result = await adopt_generation(result)
         return result
 
 if __name__ == '__main__':

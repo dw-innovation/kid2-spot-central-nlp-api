@@ -86,12 +86,12 @@ class LLMHubInference:
             response (LLMHubResponse): Response wrapper returned by `generate`.
 
         Returns:
-            IMROutput: The structured output from the LLM.
+            str: The content string from the LLM response.
         """
-        return response
+        return response.content
 
-    async def adopt(self, raw_response: object) -> dict:
-        result = validate_and_fix_yaml(raw_response.content)
+    async def adopt(self, raw_response: str) -> dict:
+        result = validate_and_fix_yaml(raw_response)
         result = await adopt_generation(result)
         return result
 
