@@ -1,0 +1,398 @@
+You extract spatial entities and their relationships from a sentence and return ONLY valid YAML. No explanation, no markdown, no code fences.
+
+SENTENCE: <INPUT_SENTENCE>
+
+FIELD REFERENCE:
+
+area.type: "area" if a city, town, region, or country is mentioned, "bbox" otherwise.
+area.value: (area type only) The canonical place name. Correct obvious typos and restore diacritics (e.g. "Swizerland" → "Switzerland", "Paraiba" → "Paraíba", "Comros" → "Comoros"). Keep compound names intact (e.g. "Texas, New Mexico" is one town — do NOT split into two states). Expand common abbreviations (NYC → "New York City"). Preserve non-Latin scripts if used (e.g. בוואריה, อำเภอพระพุทธบาท). Do NOT add or remove geographic qualifiers (if user says "Plovdiv (Province)" keep it, don't shorten to "Plovdiv").
+
+Each entity has:
+- id: integer starting at 0
+- type: one of two values:
+    "nwr" — use for a single entity OR unquantified plurals ("all restaurants", "show me cafes", "find pharmacies"). Words like "all", "every", or bare plurals are "nwr", NOT "cluster".
+    "cluster" — use WHENEVER a specific numeric count is given (digit or spelled out: "3 benches", "five trees", "three restaurants", "two ATMs", "eight pubs") OR a vague quantifier implies a group ("a few shops", "several cafes", "a couple of bars"). A cluster can be the ONLY entity in the output — it does NOT require a relation to another entity. When you see a number + entity type, ALWAYS use "cluster".
+- name: the GENERIC entity type, never a brand. Use "coffee shop" not "Starbucks", "restaurant" not "McDonald's", "supermarket" not "Aldi".
+  KEEP ALL qualifying words that describe the entity type in the name. The name should match the user's description as closely as possible. Examples of CORRECT names:
+    "theme park drop tower" (NOT "drop tower"), "street bench" (NOT "bench"), "municipal recycling center" (NOT "recycling center"), "canal kilometer post" (NOT "kilometer post"), "outside handball court" (NOT "handball court"), "wheelchair parking access zone", "parking lot cctv", "main entrance", "frozen yoghurt shop" (NOT "shop"), "quaker friends meeting house" (NOT "meeting house"), "solar panels on roof" (NOT "solar panel" + "roof"), "pathology doctor" (NOT "doctor"), "family services center", "tourist shop" (NOT "shop"), "public toilet" (NOT "toilet"), "outdoor seating" (NOT "seating area").
+  The ONLY things that go into properties instead of the name are:
+    - brand/brand name values (e.g. "Cerska", "Wall", "MA")
+    - named/called values using "name" property (e.g. called "Fazenda Tamara" → name: ~, value: Fazenda Tamara)
+    - street name values (e.g. "on Quellweg" → street name: ~, value: Quellweg)
+    - measurable numeric properties (height, floors, house number, length, lanes)
+    - boolean features: "outdoor seating", "wi-fi zone", "outside seating area", "vegetarian-only", "vegan", "halal", "al fresco", "lockable"
+    - denomination/religion (e.g. "orthodox", "shinto")
+    - cuisine/nationality for food establishments: extract as a "cuisine" property with operator "=". The entity name should be the generic type only.
+      "italian restaurant" → name: "restaurant", property: cuisine = italian
+      "ethiopian coffee bar" → name: "coffee bar", property: cuisine = ethiopian
+      "seafood restaurant" → name: "restaurant", property: cuisine = seafood
+      "greek taverna" → name: "taverna", property: cuisine = greek
+  Material and color ALWAYS go into properties, NOT the name:
+    "cement transit shelter" → name: "transit shelter", property: building material = cement
+    "metal wall painting" → name: "wall painting", property: surface material = metal
+    "green common" → name: "common", property: color = green
+    "wooden shrine" → name: "shrine", property: building material = wood
+    "pale-yellow wall" → name: "wall", property: color = pale yellow
+  EXCEPTION: When the query is ONLY about a brand with no generic type stated, use "brand:<BrandName>" as the name (e.g. "brand:McDonald's", "brand:H&M", "brand:wendy's", "brand:711"). If the user says "a McDonald's" without specifying "restaurant", use brand: prefix.
+- minPoints: (cluster only) minimum count of entities
+- maxDistance: (cluster only) max spread between members, as a string with units (e.g. "50 m", "1.2 km").
+    If an explicit distance is stated for the cluster spacing, use it. Patterns: "within X from each other", "X from each other", "X apart", "all within X", "each less than X apart", "no more than X between them" (e.g. "3 eateries all within 500 meters" → 500 m, "two ATMs 350m from each other" → 350 m).
+    If only a spatial term is used (e.g. "close to each other", "near each other", "next to each other"), apply the same distance approximation table used for relations: "next to each other" → 50 m, "close to each other" → 100 m, "near each other" → 250 m, etc.
+    If no spacing is mentioned at all, default to the cluster's distance to another specified entity, or 100 m if there is none.
+- properties: (optional, omit if none) list of filters. Applies to BOTH "nwr" AND "cluster" entities. Each property has:
+    - name: the property key. Prefer these standard keys when they fit:
+      Identity: "brand", "brand name", "name", "street name", "house number", "building number"
+      Materials: "building material", "surface material", "fabrication material", "roof material"
+      Appearance: "color", "roof color"
+      Dimensions: "height", "length", "width", "floors", "levels", "lanes", "lanes in each direction", "capacity", "seats"
+      Amenities: "outdoor seating", "outside seating area", "wi-fi zone", "wi-fi hotspot", "drive-through", "takeaway", "delivery", "parking", "bike parking", "covered", "lit", "heated", "air conditioning"
+      Accessibility: "wheelchair accessible", "accessible parking space", "elevator", "tactile paving"
+      Religion: "religion", "denomination"
+      Food/Drink: "cuisine", "al fresco", "vegetarian-only", "vegan", "halal", "kosher", "organic", "gluten-free"
+      Road: "toll road", "carpool lane", "speed limit", "one-way", "paved", "unpaved"
+      Security: "lockable", "surveillance", "gated"
+      Other: "in a cutting", "through a cutting", "fee", "free", "24 hours", "seasonal", "smoking", "non-smoking", "dog-friendly", "family-friendly"
+      If none of the standard keys fit, create a short, descriptive lowercase key that captures the property (e.g. "power source", "water depth", "boat type"). Do NOT discard a property just because it is not in the list above.
+      Use "color" for entity/wall colors, "roof color" for roof colors. Use "surface material" or "fabrication material" for what something is made of (not "building material" unless it's a building). Always use "~" operator (never "=") for "brand", "brand name", "name", and "house number". For "height" and other numeric dimensions, use "~" for exact values, or ">", "<" for comparisons (e.g. "taller than 3m" → operator ">"). For concrete categorical values (materials, colors, religions, denominations, cuisine), always use "=" operator (never "~").
+    - operator: (optional) "=" for exact match, "~" for partial/fuzzy match, ">" for greater than, "<" for less than. Omit for boolean properties.
+    - value: (optional) the property value. Omit for boolean properties (e.g. "outdoor seating", "wi-fi zone", "outside seating area", "vegetarian-only").
+  IMPORTANT: Brand names always go in properties, never in the "name" field (unless using the brand: prefix exception above).
+
+Each relation has:
+- source: id of source entity
+- target: id of target entity
+- type: "distance" for proximity, "contains" when one entity is inside another
+- value: (distance type only) distance as a string with original units (e.g. "400 m", "5 mi", "100 yd", "50 ft", "1.2 km", "0.5 mi")
+- spatial_term: (optional, distance type only) descriptive spatial phrase if the user used one (e.g. "next to", "close to", "in front of", "across from", "nearby", "along", "enclosed by", "a block away", "down the street", "adjacent to", "very near", "in close distance to", "opposite from", "in vicinity of", "at", "east of", "not far away")
+
+Distance approximations (use these when no exact number is stated):
+- 50 m: "among", "beside", "side by side", "next to", "colocated", "very near", "along", "besides"
+- 100 m: "at", "close to", "close", "in close distance to", "across from", "not far away", "enclosed by", "around it", "in front of", "behind", "right of", "left of"
+- 250 m: "adjacent to", "near", "nearby", "down the street", "a block away", "opposite to", "opposite from"
+- 500 m: "around", "in vicinity of", "in surroundings"
+- 900 m: "far", "distant"
+- 1500 m: "east of", "west of", "north of", "south of", "north-east of", "north-west of", "south-east of", "south-west of"
+Use the exact number and unit if one is stated (e.g. "200m" = "200 m", "5 miles" = "5 mi").
+
+For "contains" relations: "source" is ALWAYS the LARGER/OUTER entity (the container), "target" is ALWAYS the SMALLER/INNER entity (the contained). Do not include a "value" field.
+  Think about physical size: a square contains a beer garden (source=square, target=beer garden). A hospital contains a doctor (source=hospital, target=doctor). A waterside terminal contains a bike parking (source=terminal, target=parking). A building contains an entrance (source=building, target=entrance). NEVER reverse this — the bigger thing is always the source.
+
+IMPORTANT rules for relations:
+- "within X from each other": Create a STAR topology from entity 0 to all others, NOT edges between every pair. Example: A, B, and C within 400m → relations: A→B (400m), A→C (400m). Do NOT add B→C.
+- When a cluster entity has a distance relation to another entity, ALWAYS include that relation. The cluster's maxDistance is the spread between its own members; the relation's value is the distance to the other entity. These are independent and BOTH are required.
+  Example: "3 bus lines within 900m of a station" → cluster(maxDistance=900m) AND relation(cluster→station, value=900m).
+  Example: "water taxi and two war memorials, each 0.25 mi apart" → cluster(minPoints=2, maxDistance=0.25mi) AND relation(water taxi→memorials, value=0.25mi).
+  NEVER omit the relation just because the cluster already has a maxDistance.
+- Property values should be lowercase (e.g. "brethren" not "Brethren", "ethiopian" not "Ethiopian"). Exception: proper nouns in name/brand values keep their original casing.
+- "brand" vs "brand name" vs "name" — these are three distinct property keys:
+    - "brand" (operator ~): well-known commercial chain brands (e.g. "Starbucks", "Esso", "Aldi", "McDonald's", "H&M")
+    - "brand name" (operator ~): the specific name of an establishment, trail, or place that is NOT a well-known chain (e.g. ski trail "Tintas Renner", shop "Master Farma", restaurant "Fazenda Grill")
+    - "name" (operator ~): ONLY when the user explicitly says "named X" or "called X" (e.g. "a park called Central Park" → name ~ Central Park)
+- Assign each property to the entity it describes. Read the sentence carefully: "a bistro with a brand name containing 'atouille'" → the brand goes on the bistro, NOT on another entity. "a hospital whose name begins with Ce" → the name property goes on the hospital. Never swap properties between entities.
+- Format distance values without thousands separators: use "1100 m" not "1,100 m".
+- Sequential distances: "A is 33ft from B. C is 51yd away" → the second distance refers to the most recently mentioned entity (B→C), not the first.
+- "enclosed by" is a DISTANCE relation (100m default), NOT a contains relation.
+- Conjunction with "and": When "and" connects entities or mixes properties and entities after a preposition like "with", "near", or "close to", ALL conjoined items relate to the same parent entity. Do NOT treat the later item as an independent, unrelated entity. Example: "a building with 10 floors and water" → the building has a floors property AND a relation to water. "a cafe near a park and a river" → the cafe is near the park AND near the river. Use "contains" if the conjoined entity can physically be inside/part of the parent; otherwise use "distance" with a 100 m default.
+
+EXAMPLE 1:
+
+SENTENCE: find me an italian restaurant inside a shopping mall, with at least 3 Starbucks coffee shops very close by, in Berlin
+
+OUTPUT:
+area:
+  type: area
+  value: Berlin
+entities:
+  - id: 0
+    type: nwr
+    name: shopping mall
+  - id: 1
+    type: nwr
+    name: restaurant
+    properties:
+      - name: cuisine
+        operator: '='
+        value: italian
+  - id: 2
+    type: cluster
+    name: coffee shop
+    minPoints: 3
+    maxDistance: 50 m
+    properties:
+      - name: brand
+        operator: '~'
+        value: Starbucks
+relations:
+  - source: 0
+    target: 1
+    type: contains
+  - source: 0
+    target: 2
+    type: distance
+    value: 50 m
+    spatial_term: very near
+
+EXAMPLE 2:
+
+SENTENCE: a park near a library in Munich
+
+OUTPUT:
+area:
+  type: area
+  value: Munich
+entities:
+  - id: 0
+    type: nwr
+    name: park
+  - id: 1
+    type: nwr
+    name: library
+relations:
+  - source: 0
+    target: 1
+    type: distance
+    value: 300 m
+
+EXAMPLE 3:
+
+SENTENCE: find a McDonald's near an Aldi supermarket in Hamburg
+
+OUTPUT:
+area:
+  type: area
+  value: Hamburg
+entities:
+  - id: 0
+    type: nwr
+    name: brand:McDonald's
+  - id: 1
+    type: nwr
+    name: supermarket
+    properties:
+      - name: brand
+        operator: '~'
+        value: Aldi
+relations:
+  - source: 0
+    target: 1
+    type: distance
+    value: 250 m
+    spatial_term: near
+
+EXAMPLE 4:
+
+SENTENCE: find a hospital with an outpatient care center inside it
+
+OUTPUT:
+area:
+  type: bbox
+entities:
+  - id: 0
+    type: nwr
+    name: hospital
+  - id: 1
+    type: nwr
+    name: outpatient care center
+relations:
+  - source: 0
+    target: 1
+    type: contains
+
+EXAMPLE 5:
+
+SENTENCE: find a bakery in a park with 3 benches right next to it in Cologne
+
+OUTPUT:
+area:
+  type: area
+  value: Cologne
+entities:
+  - id: 0
+    type: nwr
+    name: park
+  - id: 1
+    type: nwr
+    name: bakery
+  - id: 2
+    type: cluster
+    name: bench
+    minPoints: 3
+    maxDistance: 50 m
+relations:
+  - source: 0
+    target: 1
+    type: contains
+  - source: 1
+    target: 2
+    type: distance
+    value: 50 m
+    spatial_term: next to
+
+EXAMPLE 6:
+
+SENTENCE: find a hotel with a second hand shop inside, and a storage rental 800 yards away, in La Bégude-de-Mazenc
+
+OUTPUT:
+area:
+  type: area
+  value: La Bégude-de-Mazenc
+entities:
+  - id: 0
+    type: nwr
+    name: hotel
+    properties:
+      - name: building number
+        operator: '~'
+        value: '76'
+  - id: 1
+    type: nwr
+    name: second hand shop
+  - id: 2
+    type: nwr
+    name: storage rental
+relations:
+  - source: 0
+    target: 1
+    type: contains
+  - source: 1
+    target: 2
+    type: distance
+    value: 800 yd
+
+EXAMPLE 7:
+
+SENTENCE: find a car shop with 2 floors named Master Farma next to a bus stop, and 1.2 km from an aqueduct
+
+OUTPUT:
+area:
+  type: bbox
+entities:
+  - id: 0
+    type: nwr
+    name: car shop
+    properties:
+      - name: floors
+        operator: '='
+        value: 2
+      - name: brand name
+        operator: '~'
+        value: Master Farma
+  - id: 1
+    type: nwr
+    name: bus stop
+  - id: 2
+    type: nwr
+    name: aqueduct
+relations:
+  - source: 0
+    target: 1
+    type: distance
+    value: 50 m
+    spatial_term: next to
+  - source: 0
+    target: 2
+    type: distance
+    value: 1.2 km
+
+EXAMPLE 8:
+
+SENTENCE: find a cafe with outdoor seating near a driving school and 5 km from a taxi stand in Nouvelle-Aquitaine
+
+OUTPUT:
+area:
+  type: area
+  value: Nouvelle-Aquitaine
+entities:
+  - id: 0
+    type: nwr
+    name: cafe
+    properties:
+      - name: outdoor seating
+  - id: 1
+    type: nwr
+    name: driving school
+  - id: 2
+    type: nwr
+    name: taxi stand
+relations:
+  - source: 0
+    target: 1
+    type: distance
+    value: 100 m
+    spatial_term: not far away
+  - source: 0
+    target: 2
+    type: distance
+    value: 5 km
+
+EXAMPLE 9:
+
+SENTENCE: find a climbing wall taller than 3 meters within 300 m of a bus station in Groningen
+
+OUTPUT:
+area:
+  type: area
+  value: Groningen
+entities:
+  - id: 0
+    type: nwr
+    name: indoor climbing wall
+    properties:
+      - name: height
+        operator: '>'
+        value: 3 m
+  - id: 1
+    type: nwr
+    name: bus station
+relations:
+  - source: 0
+    target: 1
+    type: distance
+    value: 300 m
+
+EXAMPLE 10:
+
+SENTENCE: find all McDonald's in Hidalgo, Mexico
+
+OUTPUT:
+area:
+  type: area
+  value: Hidalgo, Mexico
+entities:
+  - id: 0
+    type: nwr
+    name: brand:McDonald's
+
+EXAMPLE 11:
+
+SENTENCE: find a church within 100m of a building with 10 stories or more and water in the City of London
+
+OUTPUT:
+area:
+  type: area
+  value: City of London
+entities:
+  - id: 0
+    type: nwr
+    name: church
+  - id: 1
+    type: nwr
+    name: building
+    properties:
+      - name: floors
+        operator: '>'
+        value: 10
+  - id: 2
+    type: nwr
+    name: water
+relations:
+  - source: 0
+    target: 1
+    type: distance
+    value: 100 m
+  - source: 1
+    target: 2
+    type: distance
+    value: 100 m
+
+Now extract from the SENTENCE above. Return ONLY the YAML:
