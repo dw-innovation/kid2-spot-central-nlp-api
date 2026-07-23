@@ -279,7 +279,7 @@ async def adopt_generation(parsed_result):
         AdoptFuncError: Wraps ValueError/IndexError/KeyError/TypeError with context.
     """
     if not parsed_result:
-        raise AdoptFuncError("Error in Adopt Generation, None object")
+        raise AdoptFuncError("Parsed result is None or empty - YAML parsing likely failed. Check model output and YAML format.")
     display = []
     try:
         if "area" not in parsed_result:

@@ -4,6 +4,7 @@ from adopt_generation import adopt_generation
 import httpx
 import json
 import os
+from loguru import logger
 
 load_dotenv()
 
@@ -76,6 +77,7 @@ class T5Inference:
         Raises:
             Exception: If parsing or transformation fails downstream.
         """
+        logger.debug(f"Raw T5 response: {raw_response}")
         result = validate_and_fix_yaml(raw_response)
         result = await adopt_generation(result)
         return result

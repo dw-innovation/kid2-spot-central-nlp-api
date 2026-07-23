@@ -91,6 +91,7 @@ class LLMHubInference:
         return response.content
 
     async def adopt(self, raw_response: str) -> dict:
+        logger.debug(f"Raw LLMHub response: {raw_response}")
         result = validate_and_fix_yaml(raw_response)
         result = await adopt_generation(result)
         return result

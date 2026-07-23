@@ -35,16 +35,20 @@ def validate_and_fix_yaml(yaml_text):
     Returns:
         dict: Parsed and corrected YAML content as a Python dictionary.
 
+    Raises:
+        ValueError: If YAML parsing fails irrecoverably.
+
     Notes:
         - If parsing fails due to common known issues, the function attempts to correct
           them and recursively calls itself.
-        - If parsing fails irrecoverably, the function may return `None` or raise an error,
-          depending on the failure point.
 
     Examples:
         >>> validate_and_fix_yaml("area:\n  name: Bonn\n  type: city")
         {'area': {'name': 'Bonn', 'type': 'city'}}
     """
+    if not yaml_text or not yaml_text.strip():
+        raise ValueError("Empty or None YAML text received")
+
     yaml_text = yaml_text.replace('</s>', '')
     yaml_text = re.sub(r"^\s*`+.*?\n", "", yaml_text)  # removes ```yaml\n etc.
     yaml_text = re.sub(r"^\s*`+", "", yaml_text)  # removes stray leading
@@ -63,6 +67,7 @@ def validate_and_fix_yaml(yaml_text):
             corrected_line = misformatted_line.strip()
             yaml_text = yaml_text.replace(misformatted_line, corrected_line)
             return validate_and_fix_yaml(yaml_text)
+        raise ValueError(f"Failed to fix ParserError: {e}")
     except yaml.composer.ComposerError as e:
         print(f"fixing error: {e}")
         line_num = e.problem_mark.line
@@ -75,6 +80,7 @@ def validate_and_fix_yaml(yaml_text):
             fixed_tag_value = "\"" + tag_value + "\""
             yaml_text = yaml_text.replace(tag_value, fixed_tag_value)
             return validate_and_fix_yaml(yaml_text)
+        raise ValueError(f"Failed to fix ComposerError: {e}")
 
     except yaml.scanner.ScannerError as e:
         print(f"fixing error: {e}")
@@ -88,6 +94,9 @@ def validate_and_fix_yaml(yaml_text):
             corrected_line = misformatted_line.replace("id:", "\n id:")
             yaml_text = yaml_text.replace(misformatted_line, corrected_line)
             return validate_and_fix_yaml(yaml_text)
+        raise ValueError(f"Failed to fix ScannerError: {e}")
+    except Exception as e:
+        raise ValueError(f"Unexpected YAML parsing error: {e}")
 
 
 
