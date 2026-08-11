@@ -119,6 +119,23 @@ MODEL_INFERENCES = {
 MAX_RETRIES = int(os.environ.get("MAX_RETRIES", "10"))
 
 
+async def log_to_mongodb(document: dict) -> None:
+    """
+    Persist an inference result (or failure) to MongoDB.
+
+    Runs the blocking pymongo insert in a thread so the async handler
+    is not stalled. Failures are logged but never propagated, so a
+    MongoDB outage cannot break the inference response.
+
+    Args:
+        document (dict): The document to insert into the collection.
+    """
+    try:
+        await asyncio.to_thread(collection.insert_one, dict(document))
+    except Exception as e:
+        logger.error(f"Failed to log inference result to MongoDB: {e}")
+
+
 @app.post(
     "/transform-sentence-to-imr",
     response_model=Response,
@@ -158,7 +175,7 @@ async def transform_sentence_to_imr(body: RequestBody):
                 adopted_result = await MODEL_INFERENCES[model].adopt(raw_output)
 
                 logger.info(f"Endpoint attempt {attempt} succeeded.")
-                return {
+                model_result = {
                     "timestamp": f"{datetime.now():%Y-%m-%d %H:%M:%S%z}",
                     "inputSentence": sentence,
                     "imr": adopted_result["imr"],
@@ -168,6 +185,8 @@ async def transform_sentence_to_imr(body: RequestBody):
                     "status": "success",
                     "username": username,
                 }
+                await log_to_mongodb(model_result)
+                return model_result
 
             raise Exception(
                 f"Model returned status {response.status_code} on attempt {attempt}."
@@ -184,6 +203,16 @@ async def transform_sentence_to_imr(body: RequestBody):
 
     logger.error(
         f"Endpoint failed after {MAX_RETRIES} attempts. Last error: {last_error}"
+    )
+    await log_to_mongodb(
+        {
+            "timestamp": f"{datetime.now():%Y-%m-%d %H:%M:%S%z}",
+            "inputSentence": sentence,
+            "modelVersion": model,
+            "status": "error",
+            "error": str(last_error),
+            "username": username,
+        }
     )
     raise HTTPException(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
